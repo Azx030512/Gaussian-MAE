@@ -29,6 +29,7 @@ $^\star$: Equal Contribution, $^\dagger$: Corresponding Author <br>
 - [x] `08.09.2024`: The ModelNet-Splats is released on [Huggingface](https://huggingface.co/datasets/ShapeSplats/ModelNet_Splats). Please follow the ModelNet [term of use](https://modelnet.cs.princeton.edu/#).
 - [x] `16.12.2024`: Code release.
 - [x] `24.12.2024`: ShapeSplat is accepted as 3DV oral! 🎄 Meet you in Singapore!
+- [x] `23.03.2025`: The 2D renders together with camera parameters are released on [Huggingface](https://huggingface.co/datasets/ShapeSplats/sharing).
 
 
 ## Method
@@ -203,6 +204,7 @@ For simplicity, we follow the approach in PointMAE and create a separate folder 
 
 - **Accuracy Logging**: The best accuracy is logged with wandb, also you can find it in the `.log` file by searching for `ckpt-best.pth`.
 
+We provide the checkpoints of pretrained model using all the 3DGS attributes, and the corresponding finetuned model on ModelNet10 and ModelNet40 in the [ckpts](https://huggingface.co/datasets/ShapeSplats/sharing/tree/main/ckpts).
 
 
 ## Citation
