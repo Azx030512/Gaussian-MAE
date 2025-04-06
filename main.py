@@ -1,3 +1,8 @@
+import os
+os.environ['OMP_NUM_THREADS']='2'
+os.environ['MKL_NUM_THREADS']='2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ["CUDA_LAUNCH_BLOCKING"] = '1'
 from tools import pretrain_run_net as pretrain
 from tools import finetune_run_net as finetune
 from tools import test_run_net as test_net
@@ -5,7 +10,6 @@ from utils import parser, dist_utils, misc
 from utils.logger import get_root_logger
 from utils.config import get_config, log_config_to_file, log_args_to_file
 import time
-import os
 import torch
 import wandb
 from tensorboardX import SummaryWriter
