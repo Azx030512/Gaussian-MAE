@@ -12,7 +12,7 @@ from sklearn.svm import LinearSVC
 import numpy as np
 from datasets import data_transforms
 from utils.gaussian import write_gaussian_feature_to_ply, unnormalize_gaussians
-
+from tqdm import tqdm
 train_transforms = data_transforms.PointcloudScaleAndTranslate()
 
 
@@ -45,12 +45,8 @@ def evaluate_svm(train_features, train_labels, test_features, test_labels):
 def run_net(args, config, train_writer=None, val_writer=None):
     logger = get_logger(args.log_name)
     # build dataset
-    (
-        (train_sampler, train_dataloader),
-        (_, test_dataloader),
-    ) = builder.dataset_builder(args, config.dataset.train), builder.dataset_builder(
-        args, config.dataset.val
-    )
+    (train_sampler, train_dataloader) = builder.dataset_builder(args, config.dataset.train)
+    (_, test_dataloader) = builder.dataset_builder(args, config.dataset.val)
     (_, extra_train_dataloader) = (
         builder.dataset_builder(args, config.dataset.extra_train)
         if config.dataset.get("extra_train")
@@ -71,14 +67,10 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
     # resume ckpts
     if args.resume:
-        start_epoch, best_metric = builder.resume_model(
-            base_model, args, logger=logger, strict_load=True
-        )
+        start_epoch, best_metric = builder.resume_model(base_model, args, logger=logger, strict_load=True)
         best_metrics = Acc_Metric(best_metric)
     elif args.start_ckpts is not None:
-        builder.load_model(
-            base_model, args.start_ckpts, logger=logger, strict_load=True
-        )
+        builder.load_model(base_model, args.start_ckpts, logger=logger, strict_load=True)
 
     # DDP
     if args.distributed:
@@ -130,9 +122,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
         base_model.zero_grad()
         n_batches = len(train_dataloader)
         npoints = config.npoints
-        for idx, (taxonomy_ids, model_ids, data, scale_c, scale_m) in enumerate(
-            train_dataloader
-        ):
+        for idx, (taxonomy_ids, model_ids, data, scale_c, scale_m) in enumerate(tqdm(train_dataloader,smoothing=0.9)):
 
             num_iter += 1
             n_itr = epoch * n_batches + idx
@@ -143,66 +133,29 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             if config.npoints_fps:
                 # using fps gs to select subset of points
-                points = misc.fps_gs(
-                    points, npoints, attribute=config.model.group_attribute
-                )
+                points = misc.fps_gs(points, npoints, attribute=config.model.group_attribute)
             else:
                 # using random sampling
                 random_idx = np.random.choice(points.size(1), npoints, False)
                 points = points[:, random_idx, :].contiguous()
 
-            if (
-                epoch == config.max_epoch and idx % 50 == 0
-            ):  # save last epoch ply for visualization
-                loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = (
-                    base_model(points, save=True)
-                )
+            if (epoch == config.max_epoch and idx % 50 == 0):  # save last epoch ply for visualization
+                loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
-                os.makedirs(
-                    os.path.join(args.experiment_path, "save_ply"), exist_ok=True
-                )
+                os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)
 
-                original_gaussians, vis_gaussians, full_rebuild_gaussian = (
-                    unnormalize_gaussians(
-                        original_gaussians,
-                        vis_gaussians,
-                        full_rebuild_gaussian,
-                        scale_c,
-                        scale_m,
-                        config,
-                    )
-                )
+                original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
 
                 for i in range(vis_gaussians.shape[0]):  # save whole batch
-                    vis_gaussians_ply_path = os.path.join(
-                        args.experiment_path,
-                        "save_ply",
-                        f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis_gaussians.ply",
-                    )
-                    full_rebuild_gaussian_ply_path = os.path.join(
-                        args.experiment_path,
-                        "save_ply",
-                        f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild_gaussian.ply",
-                    )
-                    original_gaussians_ply_path = os.path.join(
-                        args.experiment_path,
-                        "save_ply",
-                        f"{model_ids[i]}_original_gaussians.ply",
-                    )
-                    write_gaussian_feature_to_ply(
-                        vis_gaussians[i], vis_gaussians_ply_path
-                    )
-                    write_gaussian_feature_to_ply(
-                        full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path
-                    )
-                    write_gaussian_feature_to_ply(
-                        original_gaussians[i], original_gaussians_ply_path
-                    )
+                    vis_gaussians_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis_gaussians.ply",)
+                    full_rebuild_gaussian_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild_gaussian.ply",)
+                    original_gaussians_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original_gaussians.ply",)
+                    write_gaussian_feature_to_ply(vis_gaussians[i], vis_gaussians_ply_path)
+                    write_gaussian_feature_to_ply(full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path)
+                    write_gaussian_feature_to_ply(original_gaussians[i], original_gaussians_ply_path)
             else:
                 if epoch != config.max_epoch:
-                    points = train_transforms.augument(
-                        points, attribute=config.model.attribute
-                    )
+                    points = train_transforms.augument(points, attribute=config.model.attribute)
                 loss_dict = base_model(points)
 
             # aggregate all loss
@@ -254,8 +207,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             if idx % 20 == 0:
 
-                print_log(
-                    "[Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) Losses = %s lr = %.6f"
+                print_log("[Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) Losses = %s lr = %.6f"
                     % (
                         epoch,
                         config.max_epoch,
@@ -310,7 +262,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             args,
             logger=logger,
         )
-        if epoch == 250 or epoch == 275 or epoch == 300 - 1:
+        if epoch == 250 or epoch == 275 or epoch == 300:
             builder.save_checkpoint(
                 base_model,
                 optimizer,
@@ -351,7 +303,7 @@ def validate(
     train_label = []
     npoints = config.dataset.N_POINTS
     with torch.no_grad():
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(extra_train_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(extra_train_dataloader,smoothing=0.9)):
             points = data[0].cuda()
             label = data[1].cuda()
 
@@ -364,7 +316,7 @@ def validate(
             train_features.append(feature.detach())
             train_label.append(target.detach())
 
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(test_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(test_dataloader,smoothing=0.9)):
             points = data[0].cuda()
             label = data[1].cuda()
 
@@ -394,9 +346,7 @@ def validate(
             test_label.data.cpu().numpy(),
         )
 
-        print_log(
-            "[Validation] EPOCH: %d  acc = %.4f" % (epoch, svm_acc), logger=logger
-        )
+        print_log("[Validation] EPOCH: %d  acc = %.4f" % (epoch, svm_acc), logger=logger)
 
         if args.distributed:
             torch.cuda.synchronize()

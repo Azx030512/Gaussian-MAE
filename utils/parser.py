@@ -5,15 +5,15 @@ from pathlib import Path
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="yaml config file")
+    parser.add_argument("--config", default="cfgs/pretrain/pretrain_enc_full_group_xyz_1k.yaml", type=str, help="yaml config file")
     parser.add_argument(
         "--launcher", choices=["none", "pytorch"], default="none", help="job launcher"
     )
     parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0, help="random seed")
     parser.add_argument(
-        "--exp_name", type=str, default="default", help="experiment name"
+        "--exp_name", type=str, default="pretrain-try", help="experiment name"
     )
     parser.add_argument("--loss", type=str, default="cd1", help="loss name")
     parser.add_argument(
@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--shot", type=int, default=-1)
     parser.add_argument("--fold", type=int, default=-1)
     parser.add_argument("--output_path", type=str, default=None)
-    parser.add_argument("--use_wandb", action="store_true")
+    parser.add_argument("--use_wandb", default=False ,action="store_true")
     parser.add_argument(
         "--deterministic",
         action="store_true",

@@ -148,9 +148,7 @@ class SoftEncoder(nn.Module):
             attribute_index.extend(sh_index)
 
         point_groups = point_groups[..., attribute_index]
-        point_groups = point_groups.contiguous().reshape(
-            bs * g, o, len(attribute_index)
-        )
+        point_groups = point_groups.contiguous().reshape(bs * g, o, len(attribute_index))
 
         # Tokenization via first convolution layer
         feature = self.first_conv(point_groups.transpose(2, 1))  # (BG, E, O)

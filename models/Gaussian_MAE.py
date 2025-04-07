@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from timm.models.layers import trunc_normal_
+from torch.nn.init import trunc_normal_
 from .build import MODELS
 from utils.checkpoint import (
     get_missing_parameters_message,
@@ -36,9 +36,7 @@ class MaskTransformer(nn.Module):
         self.encoder = (
             Encoder(encoder_channel=self.encoder_dims, attribute=config.attribute)
             if not kwargs.get("soft_knn", False)
-            else SoftEncoder(
-                encoder_channel=self.encoder_dims, attribute=config.attribute
-            )
+            else SoftEncoder(encoder_channel=self.encoder_dims, attribute=config.attribute)
         )
 
         self.mask_type = config.transformer_config.mask_type
