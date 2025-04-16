@@ -119,17 +119,9 @@ class ModelNetGaussian(data.Dataset):
         self.classes = dict(zip(self.cat, range(len(self.cat))))
         self.sample_points_num = config.N_POINTS
 
-        print_log(
-            f"[DATASET] Using Guassian Attribute {self.attribute}",
-            logger="ModelNet Gaussian",
-        )
-        print_log(
-            f"[DATASET] sample out {self.sample_points_num} points",
-            logger="ModelNet Gaussian",
-        )
-        print_log(
-            f"[DATASET] Open file {self.data_list_file}", logger="ModelNet Gaussian"
-        )
+        print_log(f"[DATASET] Using Guassian Attribute {self.attribute}",logger="ModelNet Gaussian")
+        print_log(f"[DATASET] sample out {self.sample_points_num} points",logger="ModelNet Gaussian")
+        print_log(f"[DATASET] Open file {self.data_list_file}", logger="ModelNet Gaussian")
         with open(self.data_list_file, "r") as f:
             lines = f.readlines()
 
@@ -140,9 +132,7 @@ class ModelNetGaussian(data.Dataset):
             taxonomy_id = line.split("_")[:-1]
             taxonomy_id = "_".join(taxonomy_id)
             model_id = line
-            file_path = os.path.join(
-                self.gs_path, taxonomy_id, self.subset, line, "point_cloud.ply"
-            )
+            file_path = os.path.join(self.gs_path, self.subset, line, "point_cloud.ply")
             cls = self.classes[taxonomy_id]
             self.file_list.append(
                 {
@@ -210,9 +200,9 @@ class ModelNetGaussian(data.Dataset):
         sample = self.file_list[idx]
         label = sample["cls"]
         try:
-            gs = IO.get(os.path.join(self.gs_path, sample["file_path"]))
+            gs = IO.get(sample["file_path"])
         except Exception:
-            print("Error in loading", os.path.join(self.gs_path, sample["file_path"]))
+            print("Error in loading", sample["file_path"])
 
         vertex = gs["vertex"]
 

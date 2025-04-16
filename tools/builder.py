@@ -18,7 +18,7 @@ from timm.scheduler import CosineLRScheduler
 
 def dataset_builder(args, config):
     dataset = build_dataset_from_cfg(config._base_, config.others)
-    shuffle = config.others.subset == "train"
+    shuffle = "train" in config.others.subset
     if args.distributed:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, shuffle=shuffle
@@ -27,7 +27,7 @@ def dataset_builder(args, config):
             dataset,
             batch_size=config.others.bs,
             num_workers=int(args.num_workers),
-            drop_last=config.others.subset == "train",
+            drop_last= "train" in config.others.subset,
             worker_init_fn=worker_init_fn,
             sampler=sampler,
             persistent_workers=True,
@@ -41,7 +41,7 @@ def dataset_builder(args, config):
             drop_last=False,  # config.others.subset == 'train'
             num_workers=int(args.num_workers),
             worker_init_fn=worker_init_fn,
-            persistent_workers=True,
+            persistent_workers=False,
         )
     return sampler, dataloader
 

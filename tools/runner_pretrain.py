@@ -176,10 +176,10 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             if args.distributed:
                 loss = dist_utils.reduce_tensor(loss, args)
-                losses.update([loss.item() * 1000])
+                losses.update([loss.detach().item() * 1000])
 
             else:
-                losses.update([loss.mean().item() * 1000])
+                losses.update([loss.detach().mean().item() * 1000])
                 # all loss_dict change to item and * 1000, follow the pointmae
                 loss_dict = {
                     key: loss_dict[key].mean().item() * 1000 for key in loss_dict.keys()
@@ -205,32 +205,31 @@ def run_net(args, config, train_writer=None, val_writer=None):
             batch_time.update(time.time() - batch_start_time)
             batch_start_time = time.time()
 
-            if idx % 20 == 0:
-
-                print_log("[Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) Losses = %s lr = %.6f"
-                    % (
-                        epoch,
-                        config.max_epoch,
-                        idx + 1,
-                        n_batches,
-                        batch_time.val(),
-                        data_time.val(),
-                        ["%.4f" % l for l in losses.val()],
-                        optimizer.param_groups[0]["lr"],
-                    ),
-                    logger=logger,
-                )
-                # print loss_dict
-                for key in loss_dict.keys():
-                    if key == "cd":
-                        print_log(f"{key} = {loss_dict[key]}", logger=logger)
-                    else:
-                        # undo the * 1000
-                        print_log(f"{key} = {loss_dict[key]/1000}", logger=logger)
-                # print all kind of loss
-                if args.use_wandb:
-                    for key in loss_dict.keys():
-                        wandb.log({key: loss_dict[key]}, step=n_itr)
+            # if idx % 20 == 0:
+            #     print_log("[Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) Losses = %s lr = %.6f"
+            #         % (
+            #             epoch,
+            #             config.max_epoch,
+            #             idx + 1,
+            #             n_batches,
+            #             batch_time.val(),
+            #             data_time.val(),
+            #             ["%.4f" % l for l in losses.val()],
+            #             optimizer.param_groups[0]["lr"],
+            #         ),
+            #         logger=logger,
+            #     )
+            #     # print loss_dict
+            #     for key in loss_dict.keys():
+            #         if key == "cd":
+            #             print_log(f"{key} = {loss_dict[key]}", logger=logger)
+            #         else:
+            #             # undo the * 1000
+            #             print_log(f"{key} = {loss_dict[key]/1000}", logger=logger)
+            #     # print all kind of loss
+            #     if args.use_wandb:
+            #         for key in loss_dict.keys():
+            #             wandb.log({key: loss_dict[key]}, step=n_itr)
 
         if isinstance(scheduler, list):
             for item in scheduler:

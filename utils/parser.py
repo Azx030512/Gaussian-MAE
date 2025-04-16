@@ -5,21 +5,21 @@ from pathlib import Path
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="cfgs/pretrain/pretrain_enc_full_group_xyz_1k.yaml", type=str, help="yaml config file")
+    parser.add_argument("--config", default="", type=str, help="yaml config file")
     parser.add_argument(
         "--launcher", choices=["none", "pytorch"], default="none", help="job launcher"
     )
     parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--num_workers", type=int, default=2)
+    parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0, help="random seed")
     parser.add_argument(
-        "--exp_name", type=str, default="pretrain-try", help="experiment name"
+        "--exp_name", type=str, default="pretrain-shell", help="experiment name"
     )
     parser.add_argument("--loss", type=str, default="cd1", help="loss name")
     parser.add_argument(
         "--start_ckpts", type=str, default=None, help="reload used ckpt path"
     )
-    parser.add_argument("--ckpts", type=str, default=None, help="test used ckpt path")
+    parser.add_argument("--ckpts", type=str, default="", help="test used ckpt path")
     parser.add_argument("--val_freq", type=int, default=1, help="test freq")
     parser.add_argument(
         "--soft_knn", action="store_true", default=True, help="use soft knn in Encoder"

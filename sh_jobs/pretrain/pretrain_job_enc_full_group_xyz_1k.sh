@@ -9,11 +9,11 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 128GB
 
-source /scratch_net/schusch/qimaqi/miniconda3/etc/profile.d/conda.sh
-conda activate gaussian_mae
+# source /scratch_net/schusch/qimaqi/miniconda3/etc/profile.d/conda.sh
+# conda activate gaussian_mae
 
-cd ..
-cd ..
+# cd ..
+# cd ..
 
 echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
@@ -21,5 +21,5 @@ echo "Time: $(date)"
 python main.py \
     --config cfgs/pretrain/pretrain_enc_full_group_xyz_1k.yaml \
     --exp_name gaussian_mae_enc_full_group_xyz_1k \
-    --num_workers=8 \
+    --num_workers=1 \
     # --resume 

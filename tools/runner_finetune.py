@@ -15,7 +15,7 @@ from datasets import data_transforms
 from pointnet2_ops import pointnet2_utils
 from torchvision import transforms
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-
+from tqdm import tqdm
 
 def draw_confusion_matrix(predict, tests, save_path, labels_num=40):
     predict_np = predict.detach().cpu().numpy()
@@ -67,12 +67,9 @@ class Acc_Metric:
 def run_net(args, config, train_writer=None, val_writer=None):
     logger = get_logger(args.log_name)
     # build dataset
-    (
-        (train_sampler, train_dataloader),
-        (_, test_dataloader),
-    ) = builder.dataset_builder(args, config.dataset.train), builder.dataset_builder(
-        args, config.dataset.val
-    )
+    (train_sampler, train_dataloader) = builder.dataset_builder(args, config.dataset.train)
+    (_, test_dataloader) = builder.dataset_builder(args, config.dataset.val)
+    
     # build model
     base_model = builder.model_builder(config.model)
 
@@ -136,7 +133,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
         # print("config",config)
         npoints = config.npoints
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(train_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(train_dataloader)):
             num_iter += 1
             n_itr = epoch * n_batches + idx
 
@@ -157,26 +154,16 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 point_all = points.size(1)
 
             if config.npoints_fps:
-                fps_idx = pointnet2_utils.furthest_point_sample(
-                    points, point_all
-                )  # (B, npoint)
+                fps_idx = pointnet2_utils.furthest_point_sample(points, point_all)  # (B, npoint)
                 fps_idx = fps_idx[:, np.random.choice(point_all, npoints, False)]
 
-                points = (
-                    pointnet2_utils.gather_operation(
-                        points.transpose(1, 2).contiguous(), fps_idx
-                    )
-                    .transpose(1, 2)
-                    .contiguous()
-                )  # (B, N, 3)
+                points = pointnet2_utils.gather_operation(points.transpose(1, 2).contiguous(), fps_idx).transpose(1, 2).contiguous() # (B, N, 3)
             else:
                 random_idx = np.random.choice(point_all, npoints, False)
                 points = points[:, random_idx, :].contiguous()
 
             # import pdb; pdb.set_trace()
-            points = train_transforms.augument(
-                points, attribute=config.model.group_attribute
-            )
+            points = train_transforms.augument(points, attribute=config.model.group_attribute)
 
             ret = base_model(points)
 
@@ -189,9 +176,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             # forward
             if num_iter == config.step_per_update:
                 if config.get("grad_norm_clip") is not None:
-                    torch.nn.utils.clip_grad_norm_(
-                        base_model.parameters(), config.grad_norm_clip, norm_type=2
-                    )
+                    torch.nn.utils.clip_grad_norm_(base_model.parameters(), config.grad_norm_clip, norm_type=2)
                 num_iter = 0
                 optimizer.step()
                 base_model.zero_grad()
@@ -199,9 +184,9 @@ def run_net(args, config, train_writer=None, val_writer=None):
             if args.distributed:
                 loss = dist_utils.reduce_tensor(loss, args)
                 acc = dist_utils.reduce_tensor(acc, args)
-                losses.update([loss.item(), acc.item()])
+                losses.update([loss.detach().item(), acc.detach().item()])
             else:
-                losses.update([loss.item(), acc.item()])
+                losses.update([loss.detach().item(), acc.detach().item()])
 
             if args.distributed:
                 torch.cuda.synchronize()
@@ -209,9 +194,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             if train_writer is not None:
                 train_writer.add_scalar("Loss/Batch/Loss", loss.item(), n_itr)
                 train_writer.add_scalar("Loss/Batch/TrainAcc", acc.item(), n_itr)
-                train_writer.add_scalar(
-                    "Loss/Batch/LR", optimizer.param_groups[0]["lr"], n_itr
-                )
+                train_writer.add_scalar("Loss/Batch/LR", optimizer.param_groups[0]["lr"], n_itr)
             if args.use_wandb:
                 wandb.log(
                     {
@@ -271,10 +254,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     args,
                     logger=logger,
                 )
-                print_log(
-                    "--------------------------------------------------------------------------------------------",
-                    logger=logger,
-                )
+                print_log("--------------------------------------------------------------------------------------------",logger=logger)
             if args.use_wandb:
                 wandb.log(
                     {
@@ -320,15 +300,13 @@ def validate(
     all_ids = []
     npoints = config.npoints
     with torch.no_grad():
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(test_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(test_dataloader)):
             points = data[0].cuda()
             label = data[1].cuda()
 
             # do not use fps for gaussian
             if config.npoints_fps:
-                points = misc.fps_gs(
-                    points, npoints, attribute=config.model.group_attribute
-                )
+                points = misc.fps_gs(points, npoints, attribute=config.model.group_attribute)
             else:
                 random_idx = np.random.choice(points.size(1), npoints, False)
                 points = points[:, random_idx, :].contiguous()
@@ -406,7 +384,7 @@ def test(base_model, test_dataloader, args, config, logger=None):
     npoints = config.npoints
 
     with torch.no_grad():
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(test_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(test_dataloader)):
             points = data[0].cuda()
             label = data[1].cuda()
 
@@ -466,7 +444,7 @@ def test_vote(
     test_label = []
     npoints = config.npoints
     with torch.no_grad():
-        for idx, (taxonomy_ids, model_ids, data) in enumerate(test_dataloader):
+        for idx, (taxonomy_ids, model_ids, data) in enumerate(tqdm(test_dataloader)):
             points_raw = data[0].cuda()
             label = data[1].cuda()
             if npoints == 1024:
