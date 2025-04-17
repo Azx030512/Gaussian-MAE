@@ -28,7 +28,7 @@
 # cd ..
 # cd ..
 
-PRETRAIN_CKPT=/data/ckpt/aizixiang/Gaussian-MAE/experiments/pretrain_enc_full_group_xyz_1k/pretrain/pretrain-try/ckpt-last.pth
+PRETRAIN_CKPT=/data/ckpt/aizixiang/Gaussian-MAE/experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian_mae_enc_full_group_xyz_1k/ckpt-last.pth
 
 # check if PRETRAIN_CKPT exists
 if [ ! -f "$PRETRAIN_CKPT" ]; then

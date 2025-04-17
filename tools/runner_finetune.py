@@ -192,8 +192,8 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 torch.cuda.synchronize()
 
             if train_writer is not None:
-                train_writer.add_scalar("Loss/Batch/Loss", loss.item(), n_itr)
-                train_writer.add_scalar("Loss/Batch/TrainAcc", acc.item(), n_itr)
+                train_writer.add_scalar("Loss/Batch/Loss", loss.detach().item(), n_itr)
+                train_writer.add_scalar("Loss/Batch/TrainAcc", acc.detach().item(), n_itr)
                 train_writer.add_scalar("Loss/Batch/LR", optimizer.param_groups[0]["lr"], n_itr)
             if args.use_wandb:
                 wandb.log(

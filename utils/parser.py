@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0, help="random seed")
     parser.add_argument(
-        "--exp_name", type=str, default="pretrain-shell", help="experiment name"
+        "--exp_name", type=str, default="modelnet-196-st", help="experiment name"
     )
     parser.add_argument("--loss", type=str, default="cd1", help="loss name")
     parser.add_argument(
