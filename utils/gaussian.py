@@ -62,47 +62,17 @@ def unnormalize_gaussians(
     if "opacity" in config.dataset.train.others.norm_attribute:
         original_gaussians[..., 3] = (1 + (original_gaussians[..., 3])) / 2
         vis_gaussians[..., 3] = (1 + vis_gaussians[..., 3]) / 2
-        full_rebuild_gaussian[..., 3] = (
-            1 + full_rebuild_gaussian[..., 3].clip(-1, 1) + 1e-9
-        ) / 2
+        full_rebuild_gaussian[..., 3] = (1 + full_rebuild_gaussian[..., 3].clip(-1, 1) + 1e-9) / 2
 
     if "scale" in config.dataset.train.others.norm_attribute:
-        original_gaussians[..., 4:7] = original_gaussians[..., 4:7] * scale_m.unsqueeze(
-            -1
-        ).unsqueeze(-1).to(original_gaussians.device) + scale_c.unsqueeze(1).repeat(
-            1, original_gaussians.shape[1], 1
-        ).to(
-            original_gaussians.device
-        )
-        vis_gaussians[..., 4:7] = vis_gaussians[..., 4:7] * scale_m.unsqueeze(
-            -1
-        ).unsqueeze(-1).to(vis_gaussians.device) + scale_c.unsqueeze(1).repeat(
-            1, vis_gaussians.shape[1], 1
-        ).to(
-            vis_gaussians.device
-        )
-        full_rebuild_gaussian[..., 4:7] = full_rebuild_gaussian[..., 4:7].clip(
-            -1, 1
-        ) * scale_m.unsqueeze(-1).unsqueeze(-1).to(
-            full_rebuild_gaussian.device
-        ) + scale_c.unsqueeze(
-            1
-        ).repeat(
-            1, full_rebuild_gaussian.shape[1], 1
-        ).to(
-            full_rebuild_gaussian.device
-        )
+        original_gaussians[..., 4:7] = original_gaussians[..., 4:7] * scale_m.unsqueeze(-1).unsqueeze(-1).to(original_gaussians.device) + scale_c.unsqueeze(1).repeat(1, original_gaussians.shape[1], 1).to(original_gaussians.device)
+        vis_gaussians[..., 4:7] = vis_gaussians[..., 4:7] * scale_m.unsqueeze(-1).unsqueeze(-1).to(vis_gaussians.device) + scale_c.unsqueeze(1).repeat(1, vis_gaussians.shape[1], 1).to(vis_gaussians.device)
+        full_rebuild_gaussian[..., 4:7] = full_rebuild_gaussian[..., 4:7].clip(-1, 1) * scale_m.unsqueeze(-1).unsqueeze(-1).to(full_rebuild_gaussian.device) + scale_c.unsqueeze(1).repeat(1, full_rebuild_gaussian.shape[1], 1).to(full_rebuild_gaussian.device)
 
     if "sh" in config.dataset.train.others.norm_attribute:
-        original_gaussians[..., 11:14] = (
-            original_gaussians[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814)
-        )
-        vis_gaussians[..., 11:14] = (
-            vis_gaussians[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814)
-        )
-        full_rebuild_gaussian[..., 11:14] = (
-            full_rebuild_gaussian[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814)
-        )
+        original_gaussians[..., 11:14] = (original_gaussians[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814))
+        vis_gaussians[..., 11:14] = (vis_gaussians[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814))
+        full_rebuild_gaussian[..., 11:14] = (full_rebuild_gaussian[..., 11:14] * math.sqrt(3) / (2 * 0.28209479177387814))
 
     return original_gaussians, vis_gaussians, full_rebuild_gaussian
 
