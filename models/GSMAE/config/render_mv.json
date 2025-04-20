@@ -1,0 +1,122 @@
+{
+    "gs":{
+        "eval": true,
+        "is_blender": true,
+        "timenet": true, 
+        "test_iterations": [5000, 6000, 7000],
+        "save_iterations": [7000,10000,20000,30000,40000],
+        "quiet": false,
+        "iteration": 40000,
+        "train_frames": 14,
+        "force_train": false,
+
+        "name": "sintel-M",
+        "dataset": "sintel",
+        "gpus": [0, 1, 2, 3, 4, 5, 6, 7],
+    
+        "use_var": true,
+        "var_min": 0,
+        "var_max": 10,
+        "pretrain": "resnet34",
+        "initial_dim": 64,
+        "block_dims": [64, 128, 256],
+        "radius": 4,
+        "dim": 128,
+        "num_blocks": 2,
+        "iters": 4,
+    
+        "image_size": [432, 960],
+        "scale": 0,
+        "batch_size": 32,
+        "epsilon": 1e-8,
+        "lr": 4e-4,
+        "wdecay": 1e-5,
+        "dropout": 0,
+        "clip": 1.0,
+        "gamma": 0.85,
+        "num_steps": 300000,
+        
+        "restore_ckpt": null,
+        "coarse_config": null,
+        "path_flow": "/mnt/nas_9/group/leiyuanhang/code/SEA-RAFT/models/Tartan-C-T-TSKH-spring540x960-M.pth"
+    },
+    "physics":{
+        "id": 0,
+        "view_id": 0,
+        "origin_bg": true,
+        "surround_view": false,
+        "sur_traj_points": 120,
+
+        "mat_params":{
+            "material": 10,
+            "E": 2e6,
+            "nu": 0.4
+        },
+        "rho": 1000,
+        "vel": [0.0, 0.0, 0.0],
+        "predict_frames":48,
+        "mpm_iter_cnt": 200,
+        "fps": 24,
+        "voxel_size": 0.015625,
+        "gravity": [0, 0, 0.0],
+        "bc": {
+            "ground":[[0, 0, 0.5], [0, 0, 1], 0]
+        },
+
+        "params": {
+            "force": {
+                "lr_decay": true,
+                "init_lr": 0.01,
+                "final_lr": 0.01,
+                "max_steps": 60
+            }
+        },
+
+        "iter_cnt": 300,
+
+        "material": 10,
+        "init_E": 6.3,
+        "init_nu": 0.4,
+
+        "w_img": 1.0, 
+        "w_alp": 0.0,
+        "w_geo": 0.0,
+        "init_vel": [0.0, 0.0, 0.0],
+
+        "name": "spring-M",
+        "dataset": "spring",
+        "gpus": [0, 1, 2, 3, 4, 5, 6, 7],
+
+        "use_var": true,
+        "var_min": 0,
+        "var_max": 10,
+        "pretrain": "resnet34",
+        "initial_dim": 64,
+        "block_dims": [64, 128, 256],
+        "radius": 4,
+        "dim": 128,
+        "num_blocks": 2,
+        "iters": 4,
+
+        "image_size": [540, 960],
+        "scale": -1,
+        "batch_size": 32,
+        "epsilon": 1e-8,
+        "lr": 4e-4,
+        "wdecay": 1e-5,
+        "dropout": 0,
+        "clip": 1.0,
+        "gamma": 0.85,
+        "num_steps": 120000,
+        
+        "restore_ckpt": null,
+        "coarse_config": null,
+
+        "mu_parts": [2e6, 0.69e6, 0.69e6],
+        "kappa_parts": [5e6, 1.5e6, 1.5e6],
+
+        "part_counts": [170614, 3024, 30292]
+
+
+    }
+}

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from plyfile import PlyData, PlyElement
-from .general_utils import inverse_sigmoid, strip_symmetric, build_scaling_rotation
+from general_utils import inverse_sigmoid, strip_symmetric, build_scaling_rotation
 import utils3d
 
 represent_config = {
@@ -167,6 +167,11 @@ class Gaussian:
         features_dc[:, 0, 0] = np.asarray(plydata.elements[0]["f_dc_0"])
         features_dc[:, 1, 0] = np.asarray(plydata.elements[0]["f_dc_1"])
         features_dc[:, 2, 0] = np.asarray(plydata.elements[0]["f_dc_2"])
+
+        rotation = np.stack((np.asarray(plydata.elements[0]["rot_0"]),
+                        np.asarray(plydata.elements[0]["rot_1"]),
+                        np.asarray(plydata.elements[0]["rot_2"]),
+                        np.asarray(plydata.elements[0]["rot_3"])),  axis=1)
 
         if self.sh_degree > 0:
             extra_f_names = [p.name for p in plydata.elements[0].properties if p.name.startswith("f_rest_")]

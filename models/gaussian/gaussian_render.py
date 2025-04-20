@@ -13,7 +13,7 @@ import torch
 import math
 from easydict import EasyDict as edict
 import numpy as np
-from gaussian import Gaussian
+from gaussian_model import Gaussian
 from sh_utils import eval_sh
 import torch.nn.functional as F
 from easydict import EasyDict as edict
@@ -84,7 +84,7 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
         sh_degree=pc.active_sh_degree,
         campos=viewpoint_camera.camera_center,
         prefiltered=False,
-        debug=pipe.debug
+        debug=pipe.debug,
     )
     
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
@@ -136,7 +136,7 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
     # They will be excluded from value updates used in the splitting criteria.
     return edict({"render": rendered_image,
             "viewspace_points": screenspace_points,
-            "visibility_filter" : radii > 0,
+            # "visibility_filter" : radii > 0,
             "radii": radii})
 
 
@@ -196,7 +196,7 @@ class GaussianRenderer:
             if np.random.rand() < 0.5:
                 self.bg_color += 1
         else:
-            self.bg_color = torch.tensor(self.rendering_options["bg_color"], dtype=torch.float32, device="cuda")
+            self.bg_color = torch.tensor(self.rendering_options["bg_color"], dtype=torch.float32).cuda()
 
         view = extrinsics
         perspective = intrinsics_to_projection(intrinsics, near, far)
