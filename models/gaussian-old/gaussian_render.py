@@ -69,14 +69,29 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
     
     kernel_size = pipe.kernel_size
     subpixel_offset = torch.zeros((int(viewpoint_camera.image_height), int(viewpoint_camera.image_width), 2), dtype=torch.float32, device="cuda")
-
+    #Mip-Splatting
+    # raster_settings = GaussianRasterizationSettings(
+    #     image_height=int(viewpoint_camera.image_height),
+    #     image_width=int(viewpoint_camera.image_width),
+    #     tanfovx=tanfovx,
+    #     tanfovy=tanfovy,
+    #     kernel_size=kernel_size,
+    #     subpixel_offset=subpixel_offset,
+    #     bg=bg_color,
+    #     scale_modifier=scaling_modifier,
+    #     viewmatrix=viewpoint_camera.world_view_transform,
+    #     projmatrix=viewpoint_camera.full_proj_transform,
+    #     sh_degree=pc.active_sh_degree,
+    #     campos=viewpoint_camera.camera_center,
+    #     prefiltered=False,
+    #     debug=pipe.debug,
+    # )
+    #Gaussian-Splatting
     raster_settings = GaussianRasterizationSettings(
         image_height=int(viewpoint_camera.image_height),
         image_width=int(viewpoint_camera.image_width),
         tanfovx=tanfovx,
         tanfovy=tanfovy,
-        kernel_size=kernel_size,
-        subpixel_offset=subpixel_offset,
         bg=bg_color,
         scale_modifier=scaling_modifier,
         viewmatrix=viewpoint_camera.world_view_transform,
@@ -85,6 +100,7 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
         campos=viewpoint_camera.camera_center,
         prefiltered=False,
         debug=pipe.debug,
+        antialiasing=False
     )
     
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
@@ -120,8 +136,8 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
     else:
         colors_precomp = override_color
 
-    # Rasterize visible Gaussians to image, obtain their radii (on screen). 
-    rendered_image, radii = rasterizer(
+    # Rasterize visible Gaussians to image, obtain their radii (on screen). Mip-Splatting
+    rendered_image, radii, _ = rasterizer(
         means3D = means3D,
         means2D = means2D,
         shs = shs,

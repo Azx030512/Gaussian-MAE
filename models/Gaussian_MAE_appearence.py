@@ -7,7 +7,7 @@ from utils.checkpoint import (
     get_unexpected_parameters_message,
 )
 from utils.logger import print_log
-import random
+import random, math
 from knn_cuda import KNN
 from models.transformer import (
     TransformerEncoder,
@@ -18,8 +18,11 @@ from models.transformer import (
 )
 from pytorch3d.loss import chamfer_distance
 from models.Gaussian_MAE import MaskTransformer
-from gaussian import Gaussian, represent_config, GaussianRenderer
+from gaussians import GaussianModel, Scene, render
 from typing import List
+from lpips import LPIPS
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 attr_index = {
     "xyz":[0,1,2],
@@ -28,6 +31,69 @@ attr_index = {
     "r":[7, 8, 9, 10],
     "sh":[11, 12, 13]
 }
+
+def l1_loss(network_output, gt):
+    return torch.abs((network_output - gt)).mean()
+
+def l2_loss(network_output, gt):
+    return ((network_output - gt) ** 2).mean()
+
+loss_fn_vgg = None
+def lpips(img1, img2, value_range=(0, 1)):
+    global loss_fn_vgg
+    if loss_fn_vgg is None:
+        loss_fn_vgg = LPIPS(net='vgg').cuda().eval()
+    # normalize to [-1, 1]
+    img1 = (img1 - value_range[0]) / (value_range[1] - value_range[0]) * 2 - 1
+    img2 = (img2 - value_range[0]) / (value_range[1] - value_range[0]) * 2 - 1
+    return loss_fn_vgg(img1, img2).mean()
+
+def psnr(img1, img2, max_val=1.0):
+    mse = F.mse_loss(img1, img2)
+    return 20 * torch.log10(max_val / torch.sqrt(mse))
+
+def gaussian(window_size, sigma):
+    gauss = torch.Tensor([math.exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
+    return gauss / gauss.sum()
+
+def create_window(window_size, channel):
+    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+    return window
+
+def ssim(img1, img2, window_size=11, size_average=True):
+    channel = img1.size(-3)
+    window = create_window(window_size, channel)
+
+    if img1.is_cuda:
+        window = window.cuda(img1.get_device())
+    window = window.type_as(img1)
+
+    return _ssim(img1, img2, window, window_size, channel, size_average)
+
+def _ssim(img1, img2, window, window_size, channel, size_average=True):
+    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+    sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
+
+    C1 = 0.01 ** 2
+    C2 = 0.03 ** 2
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+
+    if size_average:
+        return ssim_map.mean()
+    else:
+        return ssim_map.mean(1).mean(1).mean(1)
+
+
 
 # pretrain model
 @MODELS.register_module()
@@ -129,15 +195,15 @@ class Gaussian_MAE_appearence(nn.Module):
         # appearence modules
         self.resolution = 400
         self.appearence_loss = getattr(config, "appearence_loss", False)
-        if self.appearence_loss:
-            self._init_renderer()
+        # if self.appearence_loss:
+        #     self._init_renderer()
         
-    def _init_renderer(self):
-        rendering_options = {"near" : 0.8, "far" : 1.6, "bg_color" : [1,1,1]} #'random'
-        self.renderer = GaussianRenderer(rendering_options)
-        self.renderer.pipe.kernel_size = represent_config['2d_filter_kernel_size']
+    # def _init_renderer(self):
+    #     rendering_options = {"near" : 0.8, "far" : 1.6, "bg_color" : [1,1,1]} #'random'
+    #     self.renderer = GaussianRenderer(rendering_options)
+    #     self.renderer.pipe.kernel_size = represent_config['2d_filter_kernel_size']
     
-    def _render_batch(self, reps: List[Gaussian], extrinsics: torch.Tensor, intrinsics: torch.Tensor) -> torch.Tensor:
+    def _render_batch(self, reps: List[GaussianModel], extrinsics: torch.Tensor, intrinsics: torch.Tensor) -> torch.Tensor:
         """
         Render a batch of representations.
 
@@ -254,6 +320,41 @@ class Gaussian_MAE_appearence(nn.Module):
             rebuild_reps = self.to_representation(full_gaussians)
             original_reps = self.to_representation(original_gaussians)
 
+
+            from argparse import ArgumentParser
+            from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
+            parser = ArgumentParser(description="Generate new trajectory")
+            model = ModelParams(parser)#, sentinel=True)
+            pipeline = PipelineParams(parser)
+            op = OptimizationParams(parser)
+            gs_args, phys_args = get_combined_args(parser)
+            dataset = model.extract(gs_args)
+
+            bg_color = [1, 1, 1]
+            background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+
+            scene = Scene(dataset, rebuild_reps[0])
+            viewpoint_stack = scene.getTrainCameras().copy()
+            d_xyz = torch.zeros([3], device='cuda')
+
+            rebuild_renderings=[]
+            original_renderings=[]
+            for i in range(len(rebuild_reps)):
+                viewpoint_cam = random.choice(viewpoint_stack)
+                rebuild_results = render(viewpoint_cam, rebuild_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
+                rebuild_renderings.append(rebuild_results["render"][None,...])
+                # with torch.no_grad():
+                original_results = render(viewpoint_cam, original_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
+                original_renderings.append(original_results["render"][None,...])
+            rebuild_renderings=torch.concat(rebuild_renderings, dim=0)
+            original_renderings=torch.concat(original_renderings, dim=0)
+
+            loss4 = l1_loss(rebuild_renderings, original_renderings)
+            loss_dict["appearence"] = loss4
+                
+            # for i in range(original_renderings.shape[0]):
+            #     print(i, torch.isnan(original_renderings[i]).any())
+
         if save:
             # debug we choose first in batch
             rebuild_gaussians = [rebuild_points]
@@ -290,7 +391,7 @@ class Gaussian_MAE_appearence(nn.Module):
         else:
             return loss_dict
     
-    def to_representation(self, x: torch.Tensor) -> List[Gaussian]:
+    def to_representation(self, x: torch.Tensor) -> List[GaussianModel]:
         """
         Convert a batch of network outputs to 3D representations.
 
@@ -302,20 +403,13 @@ class Gaussian_MAE_appearence(nn.Module):
         """
         reps = []
         for i in range(x.shape[0]):
-            representation = Gaussian(
-                sh_degree=0,
-                aabb=[-0.5, -0.5, -0.5, 1.0, 1.0, 1.0],
-                mininum_kernel_size = represent_config['3d_filter_kernel_size'],
-                scaling_bias = represent_config['scaling_bias'],
-                opacity_bias = represent_config['opacity_bias'],
-                scaling_activation = represent_config['scaling_activation']
-            )
-            representation.from_xyz(x[i,attr_index['xyz']])
-            representation.from_opacity(x[i,attr_index['o']])
-            representation.from_scaling(x[i,attr_index['s']])
-            representation.from_rotation(x[i,attr_index['r']])
-            representation.from_features(x[i,attr_index['sh']])
-            
+            representation = GaussianModel(sh_degree=0,)
+            representation.from_xyz(x[i,:,attr_index['xyz']])
+            representation.from_opacity(x[i,:,attr_index['o']])
+            representation.from_scaling(x[i,:,attr_index['s']])
+            representation.from_rotation(x[i,:,attr_index['r']])
+            representation.from_features_dc(x[i,:,attr_index['sh']])
+            # representation.from_features_rest(torch.zeros([x.shape[1],3*((representation.max_sh_degree+1)**2-1)], device='cuda'))
             reps.append(representation)
         return reps
 

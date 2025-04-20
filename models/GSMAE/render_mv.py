@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument('-vid', '--view_id', type=int, default=3)
     parser.add_argument('-knn', '--use_knn', type=bool, default=False)
     parser.add_argument('-cid', '--config_id', type=int, default=0)
-    parser.add_argument('--gs_ply', type=str, default="/data/ckpt/aizixiang/Gaussian-MAE/experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian_mae_enc_full_group_xyz_1k/save_ply/1a640c8dffc5d01b8fd30d65663cfd42_ep_0300_full_rebuild_gaussian.ply")
+    parser.add_argument('--gs_ply', type=str, default="/data/ckpt/aizixiang/Gaussian-MAE/experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian_mae_enc_full_group_xyz_1k/save_ply/1a640c8dffc5d01b8fd30d65663cfd42_original_gaussians.ply")
     model = ModelParams(parser)#, sentinel=True)
     pipeline = PipelineParams(parser)
     op = OptimizationParams(parser)

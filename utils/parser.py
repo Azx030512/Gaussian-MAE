@@ -5,7 +5,7 @@ from pathlib import Path
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="", type=str, help="yaml config file")
+    parser.add_argument("--config", default="cfgs/pretrain/pretrain_gaussian_mae_appearence.yaml", type=str, help="yaml config file")
     parser.add_argument(
         "--launcher", choices=["none", "pytorch"], default="none", help="job launcher"
     )

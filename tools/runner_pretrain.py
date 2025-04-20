@@ -160,13 +160,10 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             # aggregate all loss
             loss = sum([loss_dict[key] for key in loss_dict.keys()])
-            try:
-                loss.backward()
-                # Using one gpu
-            except:
-                loss = loss.mean()
-                loss.backward()
-                # "Using multi GPUs"
+            
+            loss.backward()
+            
+    
 
             # forward
             if num_iter == config.step_per_update:

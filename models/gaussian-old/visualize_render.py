@@ -8,7 +8,7 @@ from tqdm import tqdm
 from gaussian_model import Gaussian, represent_config
 from gaussian_render import GaussianRenderer
 from intrinsics import get_perspective_intrinsics
-from extrinsics import sample_camera_on_unit_sphere, look_at_gaussian, align_extrinsic_to_gaussian
+from extrinsics import sample_camera_on_unit_sphere, look_at_gaussian, align_extrinsic_to_gaussian, get_uniform_poses
 from torchvision.utils import save_image
 import open3d as o3d
 import numpy as np
@@ -195,7 +195,7 @@ for ply_path in ply_paths:
     reps.append(gaussian)
 
 
-rendering_options = {"resolution": 400, "near": 0.01, "far": 2.1, "bg_color": [1, 1, 1]}  # 'random'
+rendering_options = {"resolution": 400, "near": 0.2, "far": 10, "bg_color": [1, 1, 1]}  # 'random'
 renderer = GaussianRenderer(rendering_options)
 renderer.pipe.kernel_size = represent_config['2d_filter_kernel_size']
 
@@ -220,17 +220,21 @@ intrinsic = intrinsic.cuda()
 #     extrinsics.append(torch.tensor(extrinsic, dtype=torch.float32).cuda()[None,...])
 # extrinsics = torch.concat(extrinsics, dim=0)
 
-cams_pose = create_spheric_poses(1.0, [0, 0, 0])
+# cams_pose = create_spheric_poses(1.0, [0, 0, 0])
+# # Step 1: 加齐次项变成 (N, 4, 4)
+# cams_pose_homo = np.concatenate([
+#     cams_pose,
+#     np.array([[[0, 0, 0, 1]]]).repeat(cams_pose.shape[0], axis=0)
+# ], axis=1)
+
+cams_pose_homo = get_uniform_poses(100, 4.11, 8.97) # poses is c2w
+
 # extrinsics = np.concatenate([cams_pose, np.array([[[0,0,0,1]]]).repeat(cams_pose.shape[0],axis=0)], axis=1)
 # extrinsics = torch.tensor(extrinsics, dtype=torch.float32, device='cuda')
 
 
 
-# Step 1: 加齐次项变成 (N, 4, 4)
-cams_pose_homo = np.concatenate([
-    cams_pose,
-    np.array([[[0, 0, 0, 1]]]).repeat(cams_pose.shape[0], axis=0)
-], axis=1)
+
 
 # Step 2: 转换为 OpenGL 风格坐标系
 # opencv_to_opengl = np.diag([1, 1, 1, 1])[None, ...]  # shape (1, 4, 4)
@@ -249,7 +253,7 @@ extrinsics = torch.tensor(w2c, device='cuda', dtype=torch.float32)
 
 ret = None
 representation = reps[0]
-for i in tqdm(range(0,30)): # extrinsics.shape[0]
+for i in tqdm(range(1,3)): # extrinsics.shape[0]
     # extrinsics_w2c = torch.inverse(extrinsics[i])
     # render_pack = renderer.render(representation, extrinsics_w2c, intrinsics[i])
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def sample_camera_on_unit_sphere():
     phi = np.random.uniform(0, 2 * np.pi)
     costheta = np.random.uniform(-1, 1)
@@ -23,14 +24,13 @@ def sample_camera_on_unit_sphere():
 
 #     R = np.stack([right, forward, up_new], axis=1)  # x: right, y: forward, z: up
 
-#     t = -R.T @ cam_pos 
+#     t = -R.T @ cam_pos
 
 #     extrinsic = np.eye(4)
 #     extrinsic[:3, :3] = R.T
 #     extrinsic[:3, 3] = t
 
 #     return extrinsic
-
 
 
 def look_at_gaussian(cam_pos, target=np.array([0.0, 0.0, 0.0]), up=np.array([0.0, 1.0, 0.0])):
@@ -52,7 +52,8 @@ def look_at_gaussian(cam_pos, target=np.array([0.0, 0.0, 0.0]), up=np.array([0.0
     up_new = up_new / np.linalg.norm(up_new)
     # Note: OpenGL/Blender uses a right-handed coordinate system with the Z-axis pointing backward,
     # so we negate the forward vector to match that convention.
-    R = np.stack([right, up_new, -forward], axis=1)  # camera-to-world rotation matrix
+    # camera-to-world rotation matrix
+    R = np.stack([right, up_new, -forward], axis=1)
     c2w = np.eye(4)
     c2w[:3, :3] = R
     c2w[:3, 3] = cam_pos
@@ -73,6 +74,60 @@ def align_extrinsic_to_gaussian(extrinsic):
     T = np.eye(4)
     T[:3, :3] = inverse_transform
     return T @ extrinsic
+
+
+def get_uniform_poses(num_frames, radius, elevation, opengl=False):
+    T = num_frames
+    azimuths = np.deg2rad(np.linspace(0, 360, T + 1)[:T])
+    elevations = np.full_like(azimuths, np.deg2rad(elevation))
+    cam_dists = np.full_like(azimuths, radius)
+
+    campos = np.stack(
+        [
+            cam_dists * np.cos(elevations) * np.cos(azimuths),
+            cam_dists * np.cos(elevations) * np.sin(azimuths),
+            cam_dists * np.sin(elevations),
+        ],
+        axis=-1,
+    )
+
+    center = np.array([0, 0, 0], dtype=np.float32)
+    up = np.array([0, 0, 1], dtype=np.float32)
+    poses = []
+    for t in range(T):
+        poses.append(get_c2w_from_up_and_look_at(
+            up, center, campos[t], opengl=opengl))
+
+    return np.stack(poses, axis=0)
+
+
+def get_c2w_from_up_and_look_at(
+    up,
+    look_at,
+    pos,
+    opengl=False,
+):
+    up = up / np.linalg.norm(up)
+    z = look_at - pos
+    z = z / np.linalg.norm(z)
+    y = -up
+    x = np.cross(y, z)
+    x /= np.linalg.norm(x)
+    y = np.cross(z, x)
+
+    c2w = np.zeros([4, 4], dtype=np.float32)
+    c2w[:3, 0] = x
+    c2w[:3, 1] = y
+    c2w[:3, 2] = z
+    c2w[:3, 3] = pos
+    c2w[3, 3] = 1.0
+
+    # opencv to opengl
+    if opengl:
+        c2w[..., 1:3] *= -1
+
+    return c2w
+
 
 if __name__ == '__main__':
     cam_pos = sample_camera_on_unit_sphere() * 3.0
