@@ -32,6 +32,16 @@ attr_index = {
     "sh":[11, 12, 13]
 }
 
+from argparse import ArgumentParser
+from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
+parser = ArgumentParser(description="Generate new trajectory")
+model = ModelParams(parser)#, sentinel=True)
+pipeline = PipelineParams(parser)
+op = OptimizationParams(parser)
+gs_args, phys_args = get_combined_args(parser)
+dataset = model.extract(gs_args)
+
+
 def l1_loss(network_output, gt):
     return torch.abs((network_output - gt)).mean()
 
@@ -170,9 +180,7 @@ class Gaussian_MAE_appearence(nn.Module):
         if "opacity" in self.attribute:
             self.opacity_head = nn.Sequential(
                 nn.Conv1d(self.trans_dim, 1 * self.group_size, 1),
-                (
-                    nn.Sigmoid() if "opacity" not in self.norm_attribute else nn.Tanh()
-                ),  # otherwise the opacity range is [-1, 1]
+                nn.Sigmoid() if "opacity" not in self.norm_attribute else nn.Tanh(),  # otherwise the opacity range is [-1, 1]
             )
 
         if "scale" in self.attribute and "rotation" in self.attribute:
@@ -194,14 +202,10 @@ class Gaussian_MAE_appearence(nn.Module):
 
         # appearence modules
         self.resolution = 400
-        self.appearence_loss = True#getattr(config, "appearence_loss", False)
+        self.appearence_loss = getattr(config, "appearence_loss", False)
         # if self.appearence_loss:
         #     self._init_renderer()
         
-    # def _init_renderer(self):
-    #     rendering_options = {"near" : 0.8, "far" : 1.6, "bg_color" : [1,1,1]} #'random'
-    #     self.renderer = GaussianRenderer(rendering_options)
-    #     self.renderer.pipe.kernel_size = represent_config['2d_filter_kernel_size']
     
     def _render_batch(self, reps: List[GaussianModel], extrinsics: torch.Tensor, intrinsics: torch.Tensor) -> torch.Tensor:
         """
@@ -257,15 +261,15 @@ class Gaussian_MAE_appearence(nn.Module):
         rebuild_points = self.increase_dim(x_rec.transpose(1, 2)).transpose(1, 2).reshape(B * M, -1, 3) # B M 1024
         gt_points = neighborhood[..., :3][mask].reshape(B * M, -1, 3)
         loss_dict = {}
-        # loss1 = chamfer_distance(rebuild_points, gt_points, norm=2)[0]
-        # loss_dict["cd"] = loss1
+        loss1 = chamfer_distance(rebuild_points, gt_points, norm=2)[0]
+        loss_dict["cd"] = loss1
 
         if "opacity" in self.attribute:
             rebuild_density = self.opacity_head(x_rec.transpose(1, 2)).transpose(1, 2).reshape(B * M, -1, 1) # B M 1024
             gt_density = neighborhood[..., opacity_index][mask].reshape(B * M, -1, 1)
             # L1 loss for density
-            # loss2 = torch.nn.functional.l1_loss(rebuild_density, gt_density)
-            # loss_dict["density"] = loss2
+            loss2 = torch.nn.functional.l1_loss(rebuild_density, gt_density)
+            loss_dict["density"] = loss2
 
         if "scale" in self.attribute and "rotation" in self.attribute:
             rebuild_scale = self.scale_head(x_rec.transpose(1, 2)).transpose(1, 2).reshape(B * M, -1, 3)
@@ -280,16 +284,16 @@ class Gaussian_MAE_appearence(nn.Module):
 
             loss_scale = torch.nn.functional.l1_loss(rebuild_scale, gt_scale)  # * 0.01
             loss_rotation = torch.nn.functional.l1_loss(rebuild_rotation, gt_rotation)  # * 0.01 # try L1 first
-            # loss_dict["scale"] = loss_scale  # * 0.01
-            # loss_dict["rotation"] = loss_rotation  # * 0.01
+            loss_dict["scale"] = loss_scale  # * 0.01
+            loss_dict["rotation"] = loss_rotation  # * 0.01
 
         if "sh" in self.attribute:
             # print("x_rec", x_rec.shape) # ([128, 38, 384]) #  token M
             rebuild_sh = self.sh_head(x_rec.transpose(1, 2)).transpose(1, 2).reshape(B * M, -1, 3)  # B M 1024
             gt_sh = neighborhood[..., sh_index][mask].reshape(B * M, -1, 3)
 
-            # loss3 = torch.nn.functional.l1_loss(rebuild_sh, gt_sh)  # * 0.01
-            # loss_dict["sh"] = loss3
+            loss3 = torch.nn.functional.l1_loss(rebuild_sh, gt_sh)  # * 0.01
+            loss_dict["sh"] = loss3
 
         if self.appearence_loss:
             rebuild_gaussians = [rebuild_points]
@@ -320,16 +324,6 @@ class Gaussian_MAE_appearence(nn.Module):
             rebuild_reps = self.to_representation(full_gaussians)
             original_reps = self.to_representation(original_gaussians)
 
-
-            from argparse import ArgumentParser
-            from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
-            parser = ArgumentParser(description="Generate new trajectory")
-            model = ModelParams(parser)#, sentinel=True)
-            pipeline = PipelineParams(parser)
-            op = OptimizationParams(parser)
-            gs_args, phys_args = get_combined_args(parser)
-            dataset = model.extract(gs_args)
-
             bg_color = [1, 1, 1]
             background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
@@ -340,23 +334,26 @@ class Gaussian_MAE_appearence(nn.Module):
             rebuild_renderings=[]
             original_renderings=[]
             for i in range(len(rebuild_reps)):
-                viewpoint_cam = viewpoint_stack[0]
+                viewpoint_cam = random.choice(viewpoint_stack)
                 rebuild_results = render(viewpoint_cam, rebuild_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
                 rebuild_renderings.append(rebuild_results["render"][None,...])
-                # with torch.no_grad():
-                original_results = render(viewpoint_cam, original_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
-                original_renderings.append(original_results["render"][None,...])
+                with torch.no_grad():
+                    original_results = render(viewpoint_cam, original_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
+                    original_renderings.append(original_results["render"][None,...])
             rebuild_renderings=torch.concat(rebuild_renderings, dim=0)
             original_renderings=torch.concat(original_renderings, dim=0)
 
             loss4 = l1_loss(rebuild_renderings, original_renderings)
-            loss_dict["appearence"] = loss4
-            t=original_renderings.detach().clone().cpu()
-            import os
-            import torchvision
-            for i in range(t.shape[0]):
-                torchvision.utils.save_image(t[i], os.path.join('mae-reconstruct-render', 'gt_{0:02d}'.format(i) + ".png"))
-
+            loss_dict["appearence"] = loss4 * 3
+            # t=original_renderings.detach().clone().cpu()
+            # import os
+            # import torchvision
+            # for i in range(t.shape[0]):
+            #     torchvision.utils.save_image(t[i], os.path.join('mae-reconstruct-render', 'gt_{0:02d}'.format(i) + ".png"))
+            # t=rebuild_renderings.detach().clone().cpu()
+            # for i in range(t.shape[0]):
+            #     torchvision.utils.save_image(t[i], os.path.join('mae-reconstruct-render', 'rebuild_{0:02d}'.format(i) + ".png"))
+            
         if save:
             # debug we choose first in batch
             rebuild_gaussians = [rebuild_points]

@@ -13,6 +13,11 @@ import numpy as np
 from datasets import data_transforms
 from utils.gaussian import write_gaussian_feature_to_ply, unnormalize_gaussians
 from tqdm import tqdm
+import torchvision
+from argparse import ArgumentParser
+from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
+from gaussians import GaussianModel, Scene, render
+
 train_transforms = data_transforms.PointcloudScaleAndTranslate()
 
 
@@ -22,13 +27,11 @@ class Acc_Metric:
             self.acc = acc["acc"]
         else:
             self.acc = acc
-
     def better_than(self, other):
         if self.acc > other.acc:
             return True
         else:
             return False
-
     def state_dict(self):
         _dict = dict()
         _dict["acc"] = self.acc
@@ -115,9 +118,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter(["Loss"])
-
         num_iter = 0
-
         base_model.train()  # set model to training mode
         base_model.zero_grad()
         n_batches = len(train_dataloader)
@@ -126,7 +127,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             num_iter += 1
             n_itr = epoch * n_batches + idx
-
             data_time.update(time.time() - batch_start_time)
             dataset_name = config.dataset.train._base_.NAME
             points = data.cuda()
@@ -139,13 +139,11 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 random_idx = np.random.choice(points.size(1), npoints, False)
                 points = points[:, random_idx, :].contiguous()
 
-            if True or (epoch == config.max_epoch and idx % 50 == 0):  # save last epoch ply for visualization
+            if (epoch%20 == 0 and idx == 0):  # save last epoch ply for visualization
                 loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
                 os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)
-
                 # original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
-
                 for i in range(vis_gaussians.shape[0]):  # save whole batch
                     vis_gaussians_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis_gaussians.ply",)
                     full_rebuild_gaussian_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild_gaussian.ply",)
@@ -153,54 +151,52 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     write_gaussian_feature_to_ply(vis_gaussians[i], vis_gaussians_ply_path)
                     write_gaussian_feature_to_ply(full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path)
                     write_gaussian_feature_to_ply(original_gaussians[i], original_gaussians_ply_path)
-
-                    from argparse import ArgumentParser
-                    from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
-                    from gaussians import GaussianModel, Scene, render
+                    
                     parser = ArgumentParser(description="Generate new trajectory")
                     model = ModelParams(parser)#, sentinel=True)
                     pipeline = PipelineParams(parser)
                     op = OptimizationParams(parser)
                     gs_args, phys_args = get_combined_args(parser)
                     dataset = model.extract(gs_args)
-
                     bg_color = [1, 1, 1]
                     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
                     vis = GaussianModel(3)
                     vis.load_ply(vis_gaussians_ply_path)
-
                     full = GaussianModel(3)
                     full.load_ply(full_rebuild_gaussian_ply_path)
-
                     original = GaussianModel(3)
                     original.load_ply(original_gaussians_ply_path)
-
                     scene = Scene(dataset, vis)
-
-
-
                     viewpoint_stack = scene.getTrainCameras().copy()
                     d_xyz = torch.zeros([3], device='cuda')
 
-
-                    
                     viewpoint_cam = viewpoint_stack[0]
-
                     vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
                     vis_renderings = vis_results["render"].detach().cpu()
-    
                     full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
                     full_renderings = full_results["render"].detach().cpu()
-
                     original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
                     original_renderings = original_results["render"].detach().cpu()
 
-                    import torchvision
-                    torchvision.utils.save_image(vis_renderings, os.path.join('mae-reconstruct-render', 'vis_{0:02d}'.format(i) + ".png"))
-                    torchvision.utils.save_image(full_renderings, os.path.join('mae-reconstruct-render', 'full_{0:02d}'.format(i) + ".png"))
-                    torchvision.utils.save_image(original_renderings, os.path.join('mae-reconstruct-render', 'original_{0:02d}'.format(i) + ".png"))
+                    torchvision.utils.save_image(vis_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis.png"))
+                    torchvision.utils.save_image(full_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild.png"))
+                    torchvision.utils.save_image(original_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original.png"))
 
-                    
+                    # for j in range(len(viewpoint_stack)):
+                    #     viewpoint_cam = viewpoint_stack[j]
+                    #     vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    #     vis_renderings = vis_results["render"].detach().cpu()
+        
+                    #     full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    #     full_renderings = full_results["render"].detach().cpu()
+
+                    #     original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    #     original_renderings = original_results["render"].detach().cpu()
+
+                    #     import torchvision
+                    #     torchvision.utils.save_image(vis_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis.png"))
+                    #     torchvision.utils.save_image(full_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild.png"))
+                    #     torchvision.utils.save_image(original_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original.png"))
             else:
                 if epoch != config.max_epoch:
                     points = train_transforms.augument(points, attribute=config.model.attribute)
@@ -210,9 +206,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
             loss = sum([loss_dict[key] for key in loss_dict.keys()])
             
             loss.backward()
-            
-    
-
             # forward
             if num_iter == config.step_per_update:
                 num_iter = 0
@@ -221,15 +214,11 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             if args.distributed:
                 loss = dist_utils.reduce_tensor(loss, args)
-                losses.update([loss.detach().item() * 1000])
-
+                losses.update([loss.detach().item()])
             else:
-                losses.update([loss.detach().mean().item() * 1000])
-                # all loss_dict change to item and * 1000, follow the pointmae
-                loss_dict = {
-                    key: loss_dict[key].mean().item() * 1000 for key in loss_dict.keys()
-                }
-
+                losses.update([loss.detach().mean().item()])
+                # all loss_dict change to item, follow the pointmae
+                loss_dict = {key: loss_dict[key].mean().item() for key in loss_dict.keys()}
                 if epoch == config.max_epoch:
                     for key in loss_dict.keys():
                         final_recon_dict[key].append(loss_dict[key])
@@ -243,9 +232,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 # use loss dict to add scaler
                 for key in loss_dict.keys():
                     train_writer.add_scalar(f"Loss/Batch/{key}", loss_dict[key], n_itr)
-                train_writer.add_scalar(
-                    "Loss/Batch/LR", optimizer.param_groups[0]["lr"], n_itr
-                )
+                train_writer.add_scalar("Loss/Batch/LR", optimizer.param_groups[0]["lr"], n_itr)
 
             batch_time.update(time.time() - batch_start_time)
             batch_start_time = time.time()
@@ -269,8 +256,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             #         if key == "cd":
             #             print_log(f"{key} = {loss_dict[key]}", logger=logger)
             #         else:
-            #             # undo the * 1000
-            #             print_log(f"{key} = {loss_dict[key]/1000}", logger=logger)
+            #             print_log(f"{key} = {loss_dict[key]0}", logger=logger)
             #     # print all kind of loss
             #     if args.use_wandb:
             #         for key in loss_dict.keys():
@@ -295,7 +281,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
             ),
             logger=logger,
         )
-
         builder.save_checkpoint(
             base_model,
             optimizer,

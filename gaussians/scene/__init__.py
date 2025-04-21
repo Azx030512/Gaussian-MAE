@@ -247,6 +247,51 @@ def get_uniform_poses(num_frames, radius, elevation, opengl=False):
 
     return np.stack(poses, axis=0)
 
+def create_spheric_poses(radius, origin, n_poses=20, radius_level=3):
+    """
+    Create circular poses around z axis.
+    Inputs:
+        radius: the (negative) height and the radius of the circle.
+
+    Outputs:
+        spheric_poses: (n_poses, 3, 4) the poses in the circular path
+    """
+
+    def spheric_pose(theta, phi, radius):
+        trans_t = lambda t: np.array([
+            [1, 0, 0, 0],
+            [0, 0, 1, -t],  # 沿世界坐标系的-y移动
+            [0, -1, 0, 0],
+            [0, 0, 0, 1],
+        ])
+
+        rot_phi = lambda phi: np.array([  # 绕世界坐标系的z轴旋转
+            [np.cos(phi), -np.sin(phi), 0, 0],
+            [np.sin(phi), np.cos(phi), 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+        ])
+
+        rot_theta = lambda th: np.array([  # 绕x轴
+            [1, 0, 0, 0],
+            [0, np.cos(-th), -np.sin(-th), 0],
+            [0, np.sin(-th), np.cos(-th), 0],
+            [0, 0, 0, 1],
+        ])
+
+        c2w = rot_phi(phi) @ rot_theta(theta) @ trans_t(radius)
+        return c2w
+
+    spheric_poses = []
+    origin_trans = np.eye(4)
+    origin_trans[:3, 3] = np.array(origin)
+    for level in range(radius_level):
+        for ph in np.linspace(0, 2 * np.pi, n_poses // 2 + 1)[:-1]:  # 绕z轴360度
+            for th in np.linspace(0, np.pi / 2, n_poses // 4 + 1)[:-1]:  # 绕x轴90度
+                spheric_poses += [
+                    (origin_trans @ spheric_pose(th, ph, radius * (level + 1)))]  # 36 degree view downwards
+    return np.stack(spheric_poses, 0)
+
 
 def focal2fov(focal, pixels):
     return 2*math.atan(pixels/(2*focal))
@@ -409,6 +454,7 @@ def constructPose3D(
     evaluation = elevation
     
     poses = get_uniform_poses(num_frames, radius, elevation) # poses is c2w
+    poses = create_spheric_poses(radius, [0,0,0], n_poses=20, radius_level=3)
     
     # print("poses shape: ", poses.shape)
     # print("poses[0] is: ", poses[0])

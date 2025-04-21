@@ -78,8 +78,8 @@ class ModelParams(ParamGroup):
         self.res_scale=1
         self.dxyz_scale=1.0
         self.is_render=False
-        self.radius_set=4.11
-        self.elevation_set=8.97
+        self.radius_set=2.2
+        self.elevation_set=2.0
         self.mv_num=100
         self.static_cam=True
         self.start_time=0

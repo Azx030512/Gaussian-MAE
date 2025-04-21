@@ -178,16 +178,19 @@ class ShapeNetGaussian(data.Dataset):
         vertex = gs["vertex"]
 
         data = read_gaussian_attribute(vertex, self.attribute)
-        # data, scale_c, scale_m = self.pc_norm_gs(data, self.norm_attribute)
+        if 'xyz' in self.norm_attribute:
+            data, scale_c, scale_m = self.pc_norm_gs(data, self.norm_attribute)
+            scale_c = torch.from_numpy(scale_c).float()
+            scale_m = torch.tensor(scale_m).float()
+        else:
+            scale_c = torch.tensor([1,1,1]).float()
+            scale_m = torch.tensor(1).float()
+
 
         choice_gs = np.random.choice(len(data), self.sample_points_num, replace=True)
         data = data[choice_gs, :]
 
         data = torch.from_numpy(data).float()
-        # scale_c = torch.from_numpy(scale_c).float()
-        # scale_m = torch.tensor(scale_m).float()
-        scale_c = torch.tensor([1,1,1]).float()
-        scale_m = torch.tensor(1).float()
 
         return sample["taxonomy_id"], sample["model_id"], data, scale_c, scale_m
 
