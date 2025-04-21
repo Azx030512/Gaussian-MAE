@@ -139,12 +139,12 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 random_idx = np.random.choice(points.size(1), npoints, False)
                 points = points[:, random_idx, :].contiguous()
 
-            if (epoch == config.max_epoch and idx % 50 == 0):  # save last epoch ply for visualization
+            if True or (epoch == config.max_epoch and idx % 50 == 0):  # save last epoch ply for visualization
                 loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
                 os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)
 
-                original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
+                # original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
 
                 for i in range(vis_gaussians.shape[0]):  # save whole batch
                     vis_gaussians_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis_gaussians.ply",)
@@ -153,6 +153,54 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     write_gaussian_feature_to_ply(vis_gaussians[i], vis_gaussians_ply_path)
                     write_gaussian_feature_to_ply(full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path)
                     write_gaussian_feature_to_ply(original_gaussians[i], original_gaussians_ply_path)
+
+                    from argparse import ArgumentParser
+                    from gaussians.arguments import ModelParams, PipelineParams, get_combined_args, OptimizationParams
+                    from gaussians import GaussianModel, Scene, render
+                    parser = ArgumentParser(description="Generate new trajectory")
+                    model = ModelParams(parser)#, sentinel=True)
+                    pipeline = PipelineParams(parser)
+                    op = OptimizationParams(parser)
+                    gs_args, phys_args = get_combined_args(parser)
+                    dataset = model.extract(gs_args)
+
+                    bg_color = [1, 1, 1]
+                    background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+                    vis = GaussianModel(3)
+                    vis.load_ply(vis_gaussians_ply_path)
+
+                    full = GaussianModel(3)
+                    full.load_ply(full_rebuild_gaussian_ply_path)
+
+                    original = GaussianModel(3)
+                    original.load_ply(original_gaussians_ply_path)
+
+                    scene = Scene(dataset, vis)
+
+
+
+                    viewpoint_stack = scene.getTrainCameras().copy()
+                    d_xyz = torch.zeros([3], device='cuda')
+
+
+                    
+                    viewpoint_cam = viewpoint_stack[0]
+
+                    vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    vis_renderings = vis_results["render"].detach().cpu()
+    
+                    full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    full_renderings = full_results["render"].detach().cpu()
+
+                    original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
+                    original_renderings = original_results["render"].detach().cpu()
+
+                    import torchvision
+                    torchvision.utils.save_image(vis_renderings, os.path.join('mae-reconstruct-render', 'vis_{0:02d}'.format(i) + ".png"))
+                    torchvision.utils.save_image(full_renderings, os.path.join('mae-reconstruct-render', 'full_{0:02d}'.format(i) + ".png"))
+                    torchvision.utils.save_image(original_renderings, os.path.join('mae-reconstruct-render', 'original_{0:02d}'.format(i) + ".png"))
+
+                    
             else:
                 if epoch != config.max_epoch:
                     points = train_transforms.augument(points, attribute=config.model.attribute)

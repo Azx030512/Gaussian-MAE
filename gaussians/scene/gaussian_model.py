@@ -51,12 +51,12 @@ class GaussianModel:
         self.active_sh_degree = 0
         self.optimizer_type = optimizer_type
         self.max_sh_degree = sh_degree  
-        self._xyz = torch.empty(0)
-        self._features_dc = torch.empty(0)
-        self._features_rest = torch.empty(0)
-        self._scaling = torch.empty(0)
-        self._rotation = torch.empty(0)
-        self._opacity = torch.empty(0)
+        self._xyz = None
+        self._features_dc = None
+        self._features_rest = None
+        self._scaling = None
+        self._rotation = None
+        self._opacity = None
         self.max_radii2D = torch.empty(0)
         self.xyz_gradient_accum = torch.empty(0)
         self.denom = torch.empty(0)
@@ -101,10 +101,12 @@ class GaussianModel:
 
     @property
     def get_scaling(self):
+        # return self._scaling
         return self.scaling_activation(self._scaling)
     
     @property
     def get_rotation(self):
+        # return self._rotation
         return self.rotation_activation(self._rotation)
     
     @property
@@ -116,9 +118,10 @@ class GaussianModel:
     #     features_dc = self._features_dc
     #     features_rest = self._features_rest
     #     return torch.cat((features_dc, features_rest), dim=1)
+    
     @property
-    def get_features(self):  
-        return self._features_dc
+    def get_features(self):
+        return torch.cat((self._features_dc, self._features_rest), dim=1) if self._features_rest is not None else self._features_dc
     
     @property
     def get_features_dc(self):
@@ -130,11 +133,33 @@ class GaussianModel:
     
     @property
     def get_opacity(self):
+        # return self._opacity
         return self.opacity_activation(self._opacity)
     
     @property
     def get_exposure(self):
         return self._exposure
+
+    def from_xyz(self, attr):
+        self._xyz = attr
+
+    def from_opacity(self, attr):
+        self._opacity = self.inverse_opacity_activation(attr)
+
+    def from_scaling(self, attr):
+        self._scaling = self.scaling_inverse_activation(attr)
+
+    def from_rotation(self, attr):
+        self._rotation = attr
+    
+    def from_features_dc(self, attr):
+        if len(attr.shape)==2:
+            self._features_dc = attr[:,None,:]
+        elif len(attr.shape)==2:
+            self._features_dc = attr
+
+    def from_features_rest(self, attr):
+        self._features_rest = attr
 
     def get_exposure_from_name(self, image_name):
         if self.pretrained_exposures is None:
@@ -335,23 +360,6 @@ class GaussianModel:
 
         self.active_sh_degree = self.max_sh_degree
     
-    def from_xyz(self, attr):
-        self._xyz = attr
-
-    def from_opacity(self, attr):
-        self._opacity = attr
-
-    def from_scaling(self, attr):
-        self._scaling = attr
-
-    def from_rotation(self, attr):
-        self._rotation = attr
-    
-    def from_features_dc(self, attr):
-        self._features_dc = attr
-
-    def from_features_rest(self, attr):
-        self._features_rest = attr
 
 
     def replace_tensor_to_optimizer(self, tensor, name):
