@@ -27,23 +27,15 @@ class PointcloudScaleAndTranslate(object):
     def augument(self, pc, attribute=["xyz"]):
         bsize = pc.size()[0]
         feature_dim = pc.size()[-1]
-        if ["xyz"] not in attribute:
+        if "xyz" not in attribute:
             return pc
 
         for i in range(bsize):
             xyz1 = np.random.uniform(low=self.scale_low, high=self.scale_high, size=[3])
-            xyz2 = np.random.uniform(
-                low=-self.translate_range, high=self.translate_range, size=[3]
-            )
-            pc[i, :, 0:3] = (
-                torch.mul(pc[i, :, 0:3], torch.from_numpy(xyz1).float().cuda())
-                + torch.from_numpy(xyz2).float().cuda()
-            )
+            xyz2 = np.random.uniform(low=-self.translate_range, high=self.translate_range, size=[3])
+            pc[i, :, 0:3] = (torch.mul(pc[i, :, 0:3], torch.from_numpy(xyz1).float().cuda())+ torch.from_numpy(xyz2).float().cuda())
         if "scale" in attribute:
-            pc[..., 4:7] = torch.mul(
-                pc[..., 4:7], torch.from_numpy(xyz1).float().cuda()
-            )
-
+            pc[..., 4:7] = torch.mul(pc[..., 4:7], torch.from_numpy(xyz1).float().cuda())
         return pc
 
     # def __call__(self, pc, scale_c=None, scale_m=None, attribute=['xyz']):

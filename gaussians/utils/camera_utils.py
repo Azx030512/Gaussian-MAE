@@ -14,7 +14,6 @@ from .general_utils import PILtoTorch, ArrayToTorch
 from .graphics_utils import fov2focal
 from PIL import Image
 import numpy as np
-import taichi as ti
 import torch
 import json
 
@@ -171,30 +170,3 @@ def transform_w2c(pw: torch.Tensor,
     init_inner_points_c = pw @ R_w2c.T + t_w2c.reshape(1, 3)
     pix_coord = init_inner_points_c @ intrinsic.T
     return pix_coord
-
-
-def gen_surround_cam(center, r, num_angle, FoVx, FoVy, image):
-    camera = ti.ui.Camera()
-    c_x, c_y, c_z = center
-    camera.lookat(*center)
-    camera.up(0, 1, 0)
-    d_theta = np.pi / num_angle
-    d_phi = 2 * np.pi / num_angle
-    views = []
-    for i in range(num_angle):
-        theta = i * d_theta
-        for j in range(num_angle):
-            phi = j * d_phi
-            x=c_x + r * np.sin(theta) * np.cos(phi)
-            y=c_y + r * np.sin(theta) * np.sin(phi)
-            z=c_z + r * np.cos(theta) 
-            camera.position(x,y,z)
-            matrix=camera.get_view_matrix().T
-            R = -np.transpose(matrix[:3, :3])
-            R[:, 0] = -R[:, 0]
-            T = -matrix[:3, 3]
-            if np.isnan(R).any() or np.isnan(T).any():
-                continue
-            cam = Camera(-1, R, T, FoVx, FoVy, image, None, None, -1, fid=0.0)
-            views.append(cam)
-    return views

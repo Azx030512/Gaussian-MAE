@@ -389,23 +389,13 @@ class Gaussian_MAE(nn.Module):
             # get back gaussian feature
             rebuild_gaussians = torch.cat(rebuild_gaussians, dim=-1)
             # print("neighborhood", neighborhood.shape)
-            vis_gaussians = neighborhood[~mask].reshape(
-                B * (self.num_group - M), -1, feature_dim
-            )[..., :14]
-            vis_gaussians[..., :3] = vis_gaussians[..., :3] + center_pos[..., :3][
-                ~mask
-            ].unsqueeze(
-                1
-            )  # xyz position back to world
-            rebuild_gaussians[..., :3] = rebuild_gaussians[..., :3] + center_pos[
-                ..., :3
-            ][mask].unsqueeze(1)
+            vis_gaussians = neighborhood[~mask].reshape(B * (self.num_group - M), -1, feature_dim)[..., :14]
+            vis_gaussians[..., :3] = vis_gaussians[..., :3] + center_pos[..., :3][~mask].unsqueeze(1)  # xyz position back to world
+            rebuild_gaussians[..., :3] = rebuild_gaussians[..., :3] + center_pos[..., :3][mask].unsqueeze(1)
 
             vis_gaussians = vis_gaussians.reshape(B, -1, vis_gaussians.shape[-1])
 
-            rebuild_gaussians = rebuild_gaussians.reshape(
-                B, -1, rebuild_gaussians.shape[-1]
-            )
+            rebuild_gaussians = rebuild_gaussians.reshape(B, -1, rebuild_gaussians.shape[-1])
             full_gaussian = torch.cat([rebuild_gaussians, vis_gaussians], dim=1)
             original_gaussian = pts.clone().detach()
 

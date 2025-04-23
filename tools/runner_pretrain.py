@@ -124,7 +124,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
         n_batches = len(train_dataloader)
         npoints = config.npoints
         for idx, (taxonomy_ids, model_ids, data, scale_c, scale_m) in enumerate(tqdm(train_dataloader,smoothing=0.9)):
-
+        
             num_iter += 1
             n_itr = epoch * n_batches + idx
             data_time.update(time.time() - batch_start_time)
@@ -139,7 +139,10 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 random_idx = np.random.choice(points.size(1), npoints, False)
                 points = points[:, random_idx, :].contiguous()
 
-            if (epoch%20 == 0 and idx == 0):  # save last epoch ply for visualization
+            if epoch != config.max_epoch:
+                points = train_transforms.augument(points, attribute=config.model.attribute)
+                
+            if (epoch%30 == 0 and idx == 0):  # save last epoch ply for visualization
                 loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
                 os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)
@@ -151,55 +154,38 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     write_gaussian_feature_to_ply(vis_gaussians[i], vis_gaussians_ply_path)
                     write_gaussian_feature_to_ply(full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path)
                     write_gaussian_feature_to_ply(original_gaussians[i], original_gaussians_ply_path)
-                    
-                    parser = ArgumentParser(description="Generate new trajectory")
-                    model = ModelParams(parser)#, sentinel=True)
-                    pipeline = PipelineParams(parser)
-                    op = OptimizationParams(parser)
-                    gs_args, phys_args = get_combined_args(parser)
-                    dataset = model.extract(gs_args)
-                    bg_color = [1, 1, 1]
-                    background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
-                    vis = GaussianModel(3)
-                    vis.load_ply(vis_gaussians_ply_path)
-                    full = GaussianModel(3)
-                    full.load_ply(full_rebuild_gaussian_ply_path)
-                    original = GaussianModel(3)
-                    original.load_ply(original_gaussians_ply_path)
-                    scene = Scene(dataset, vis)
-                    viewpoint_stack = scene.getTrainCameras().copy()
-                    d_xyz = torch.zeros([3], device='cuda')
+                    if getattr(config.model, ".appearence_loss", False):
+                        parser = ArgumentParser(description="Generate new trajectory")
+                        model = ModelParams(parser)#, sentinel=True)
+                        pipeline = PipelineParams(parser)
+                        op = OptimizationParams(parser)
+                        gs_args, phys_args = get_combined_args(parser)
+                        dataset = model.extract(gs_args)
+                        bg_color = [1, 1, 1]
+                        background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+                        vis = GaussianModel(3)
+                        vis.load_ply(vis_gaussians_ply_path)
+                        full = GaussianModel(3)
+                        full.load_ply(full_rebuild_gaussian_ply_path)
+                        original = GaussianModel(3)
+                        original.load_ply(original_gaussians_ply_path)
+                        scene = Scene(dataset, vis)
+                        viewpoint_stack = scene.getTrainCameras().copy()
+                        d_xyz = torch.zeros([3], device='cuda')
 
-                    viewpoint_cam = viewpoint_stack[0]
-                    vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    vis_renderings = vis_results["render"].detach().cpu()
-                    full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    full_renderings = full_results["render"].detach().cpu()
-                    original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    original_renderings = original_results["render"].detach().cpu()
+                        viewpoint_cam = viewpoint_stack[0]
+                        vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
+                        vis_renderings = vis_results["render"].detach().cpu()
+                        full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
+                        full_renderings = full_results["render"].detach().cpu()
+                        original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
+                        original_renderings = original_results["render"].detach().cpu()
 
-                    torchvision.utils.save_image(vis_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis.png"))
-                    torchvision.utils.save_image(full_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild.png"))
-                    torchvision.utils.save_image(original_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original.png"))
+                        torchvision.utils.save_image(vis_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis.png"))
+                        torchvision.utils.save_image(full_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild.png"))
+                        torchvision.utils.save_image(original_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original.png"))
 
-                    # for j in range(len(viewpoint_stack)):
-                    #     viewpoint_cam = viewpoint_stack[j]
-                    #     vis_results = render(viewpoint_cam, vis, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    #     vis_renderings = vis_results["render"].detach().cpu()
-        
-                    #     full_results = render(viewpoint_cam, full, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    #     full_renderings = full_results["render"].detach().cpu()
-
-                    #     original_results = render(viewpoint_cam, original, pipeline, background, d_xyz, 0.0, 0.0, False)
-                    #     original_renderings = original_results["render"].detach().cpu()
-
-                    #     import torchvision
-                    #     torchvision.utils.save_image(vis_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis.png"))
-                    #     torchvision.utils.save_image(full_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild.png"))
-                    #     torchvision.utils.save_image(original_renderings, os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_original.png"))
             else:
-                if epoch != config.max_epoch:
-                    points = train_transforms.augument(points, attribute=config.model.attribute)
                 loss_dict = base_model(points)
 
             # aggregate all loss
@@ -218,7 +204,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             else:
                 losses.update([loss.detach().mean().item()])
                 # all loss_dict change to item, follow the pointmae
-                loss_dict = {key: loss_dict[key].mean().item() for key in loss_dict.keys()}
+                loss_dict = {key: loss_dict[key].detach().mean().item() for key in loss_dict.keys()}
                 if epoch == config.max_epoch:
                     for key in loss_dict.keys():
                         final_recon_dict[key].append(loss_dict[key])
@@ -228,7 +214,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 torch.cuda.synchronize()
 
             if train_writer is not None:
-                train_writer.add_scalar("Loss/Batch/Loss", loss.item(), n_itr)
+                train_writer.add_scalar("Loss/Batch/Loss", loss.detach().item(), n_itr)
                 # use loss dict to add scaler
                 for key in loss_dict.keys():
                     train_writer.add_scalar(f"Loss/Batch/{key}", loss_dict[key], n_itr)

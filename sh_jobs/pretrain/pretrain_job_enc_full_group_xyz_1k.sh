@@ -20,6 +20,6 @@ echo "Time: $(date)"
 
 python main.py \
     --config cfgs/pretrain/pretrain_enc_full_group_xyz_1k.yaml \
-    --exp_name gaussian_mae_enc_full_group_xyz_1k \
+    --exp_name official \
     --num_workers=1 \
     # --resume 

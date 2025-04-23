@@ -40,7 +40,7 @@ fi
 python main.py \
     --config cfgs/fintune/finetune_modelnet40_enc_full_group_xyz_1k.yaml \
     --finetune_model \
-    --exp_name modelnet40_cls_enc_full_group_xyz_1k \
+    --exp_name official \
     --seed 0 \
     --ckpts ${PRETRAIN_CKPT}
     

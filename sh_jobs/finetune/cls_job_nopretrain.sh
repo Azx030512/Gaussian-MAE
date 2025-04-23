@@ -18,6 +18,6 @@ cd ..
 python main.py \
     --config cfgs/fintune/finetune_modelnet10_enc_full_group_xyz_1k.yaml \
     --finetune_model \
-    --exp_name modelnet_cls_enc_full_group_xyz_1k_nopre \
+    --exp_name official_nopre \
     --seed 0
 

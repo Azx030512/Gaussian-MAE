@@ -40,7 +40,10 @@ pipeline = PipelineParams(parser)
 op = OptimizationParams(parser)
 gs_args, phys_args = get_combined_args(parser)
 dataset = model.extract(gs_args)
-
+bg_color = [1, 1, 1]
+background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+scene = Scene(dataset, None)
+viewpoint_stack = scene.getTrainCameras().copy()
 
 def l1_loss(network_output, gt):
     return torch.abs((network_output - gt)).mean()
@@ -324,13 +327,7 @@ class Gaussian_MAE_appearence(nn.Module):
             rebuild_reps = self.to_representation(full_gaussians)
             original_reps = self.to_representation(original_gaussians)
 
-            bg_color = [1, 1, 1]
-            background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
-
-            scene = Scene(dataset, rebuild_reps[0])
-            viewpoint_stack = scene.getTrainCameras().copy()
             d_xyz = torch.zeros([3], device='cuda')
-
             rebuild_renderings=[]
             original_renderings=[]
             for i in range(len(rebuild_reps)):
