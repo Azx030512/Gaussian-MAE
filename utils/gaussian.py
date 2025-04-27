@@ -27,6 +27,7 @@ def construct_list_of_attributes(_features_dc, _features_rest, _scaling, _rotati
 
 
 def write_gaussian_feature_to_ply(gaussian_feature, save_path):
+    gaussian_feature = gaussian_feature.detach().clone()
     # gaussian Nx59 feature 3+1+3+4+48
     _xyz = gaussian_feature[:, :3]
     _opcaity = gaussian_feature[:, 3:4]

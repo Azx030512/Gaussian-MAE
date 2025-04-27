@@ -21,7 +21,7 @@ dataset : {
             others: {subset: 'test',norm_attribute: ['xyz']}}}
 model : {
   NAME: PointTransformer,
-  attribute: ['xyz','opacity','scale','rotation','sh'],
+  attribute: ['xyz','opacity','scale','rotation','sh'], #'opacity','scale','rotation','sh'
   group_attribute: ['xyz'],
   soft_knn: True,
   trans_dim: 384,

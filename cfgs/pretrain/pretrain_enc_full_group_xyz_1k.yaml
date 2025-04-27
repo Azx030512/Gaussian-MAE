@@ -28,7 +28,7 @@ model : {
   loss: cdl2,
   attribute: ['xyz','opacity','scale','rotation','sh'],
   group_attribute: ['xyz'],
-  soft_knn: True,
+  soft_knn: False,
   transformer_config: {
     mask_ratio: 0.6,
     mask_type: 'rand',

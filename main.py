@@ -1,7 +1,7 @@
 import os
 os.environ['OMP_NUM_THREADS']='2'
 os.environ['MKL_NUM_THREADS']='2'
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 os.environ["CUDA_LAUNCH_BLOCKING"] = '1'
 os.environ["TORCH_CUDA_ARCH_LIST"] = '8.9'
 from tools import pretrain_run_net as pretrain
@@ -60,10 +60,6 @@ def main():
         config.dataset.val.others.bs = config.total_bs * 2
         if config.dataset.get("test"):
             config.dataset.test.others.bs = config.total_bs
-    if args.soft_knn:
-        config.model.soft_knn = True
-    if args.total_bs > 0:
-        config.total_bs = args.total_bs
     log_args_to_file(args, "args", logger=logger)
     log_config_to_file(config, "config", logger=logger)
     # exit()

@@ -29,7 +29,7 @@ model : {
   attribute: ['xyz','opacity','scale','rotation','sh'],
   group_attribute: ['xyz'],
   soft_knn: True,
-  appearence_loss: False,
+  appearence_loss: True,
   transformer_config: {
     mask_ratio: 0.6,
     mask_type: 'rand',

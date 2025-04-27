@@ -93,23 +93,15 @@ def run_net(args, config, train_writer=None, val_writer=None):
     # optimizer & scheduler
     optimizer, scheduler = builder.build_opti_sche(base_model, config)
 
+    from utils.misc import summary_parameters
+    summary_parameters(base_model, logger=logger)
+    
     if args.resume:
         builder.resume_optimizer(optimizer, args, logger=logger)
 
     # training
     base_model.zero_grad()
     for epoch in range(start_epoch, config.max_epoch + 1):
-
-        if epoch == config.max_epoch:
-            # print("report reconstruction progress on ", epoch)
-            final_recon_dict = {}
-            final_recon_dict["cd"] = []
-            final_recon_dict["density"] = []
-            final_recon_dict["scale"] = []
-            final_recon_dict["rotation"] = []
-            final_recon_dict["sh"] = []
-            final_recon_dict["scale_m"] = []
-
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
@@ -154,7 +146,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     write_gaussian_feature_to_ply(vis_gaussians[i], vis_gaussians_ply_path)
                     write_gaussian_feature_to_ply(full_rebuild_gaussian[i], full_rebuild_gaussian_ply_path)
                     write_gaussian_feature_to_ply(original_gaussians[i], original_gaussians_ply_path)
-                    if getattr(config.model, ".appearence_loss", False):
+                    if getattr(config.model, "appearence_loss", False):
                         parser = ArgumentParser(description="Generate new trajectory")
                         model = ModelParams(parser)#, sentinel=True)
                         pipeline = PipelineParams(parser)
@@ -205,10 +197,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 losses.update([loss.detach().mean().item()])
                 # all loss_dict change to item, follow the pointmae
                 loss_dict = {key: loss_dict[key].detach().mean().item() for key in loss_dict.keys()}
-                if epoch == config.max_epoch:
-                    for key in loss_dict.keys():
-                        final_recon_dict[key].append(loss_dict[key])
-                    final_recon_dict["scale_m"].append(scale_m.max().item())
 
             if args.distributed:
                 torch.cuda.synchronize()
@@ -222,31 +210,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
 
             batch_time.update(time.time() - batch_start_time)
             batch_start_time = time.time()
-
-            # if idx % 20 == 0:
-            #     print_log("[Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) Losses = %s lr = %.6f"
-            #         % (
-            #             epoch,
-            #             config.max_epoch,
-            #             idx + 1,
-            #             n_batches,
-            #             batch_time.val(),
-            #             data_time.val(),
-            #             ["%.4f" % l for l in losses.val()],
-            #             optimizer.param_groups[0]["lr"],
-            #         ),
-            #         logger=logger,
-            #     )
-            #     # print loss_dict
-            #     for key in loss_dict.keys():
-            #         if key == "cd":
-            #             print_log(f"{key} = {loss_dict[key]}", logger=logger)
-            #         else:
-            #             print_log(f"{key} = {loss_dict[key]0}", logger=logger)
-            #     # print all kind of loss
-            #     if args.use_wandb:
-            #         for key in loss_dict.keys():
-            #             wandb.log({key: loss_dict[key]}, step=n_itr)
 
         if isinstance(scheduler, list):
             for item in scheduler:
@@ -288,9 +251,6 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 args,
                 logger=logger,
             )
-
-    for attribute, value in final_recon_dict.items():
-        print(f"{attribute} loss: {np.mean(value)}")
 
     if train_writer is not None:
         train_writer.close()
