@@ -130,7 +130,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
             if epoch != config.max_epoch:
                 points = train_transforms.augument(points, attribute=config.model.attribute)
                 
-            if (epoch%30 == 0 and idx == 0):  # save last epoch ply for visualization
+            if False: #(epoch%30 == 0 and idx == 0):  # save last epoch ply for visualization
                 loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
                 os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)

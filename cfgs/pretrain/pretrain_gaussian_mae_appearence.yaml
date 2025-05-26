@@ -14,11 +14,11 @@ scheduler: {
 
 dataset : {
   train : { _base_: cfgs/dataset_configs/ShapeNet55GS.yaml,
-            others: {subset: 'train',norm_attribute: ['xyz',]}},
+            others: {subset: 'train', norm_attribute: ['xyz',]}},
   val : { _base_: cfgs/dataset_configs/ShapeNet55GS.yaml,
             others: {subset: 'test', norm_attribute: ['xyz',]}},
   test : { _base_: cfgs/dataset_configs/ShapeNet55GS.yaml,
-            others: {subset: 'test', norm_attribute: ['xyz',]}}, #'opacity','scale','rotation','sh'
+            others: {subset: 'test', norm_attribute: ['xyz',]}},    #'opacity','scale','rotation','sh'
             }
 
 model : {

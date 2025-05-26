@@ -73,7 +73,7 @@ class UnlabeledHybrid(data.Dataset):
         data = self.pc_norm(data)
         data = torch.from_numpy(data).float()
         # sample['taxonomy_id'] and sample['model_id'] are not utilized
-        return sample['taxonomy_id'], sample['model_id'], data
+        return sample['taxonomy_id'], sample['model_id'], data, np.zeros(3), 1
 
     def __len__(self):
         return len(self.file_list)
