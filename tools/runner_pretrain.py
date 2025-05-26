@@ -138,7 +138,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 loss_dict, vis_gaussians, full_rebuild_gaussian, original_gaussians = base_model(points, save=True)
                 # save to gaussian ply
                 os.makedirs(os.path.join(args.experiment_path, "save_ply"), exist_ok=True)
-                # original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
+                original_gaussians, vis_gaussians, full_rebuild_gaussian = unnormalize_gaussians(original_gaussians,vis_gaussians,full_rebuild_gaussian,scale_c,scale_m,config,)
                 for i in range(vis_gaussians.shape[0]):  # save whole batch
                     vis_gaussians_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_vis_gaussians.ply",)
                     full_rebuild_gaussian_ply_path = os.path.join(args.experiment_path,"save_ply",f"{model_ids[i]}_ep_{str(epoch).zfill(4)}_full_rebuild_gaussian.ply",)

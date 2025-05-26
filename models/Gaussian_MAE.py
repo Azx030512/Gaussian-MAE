@@ -522,8 +522,12 @@ class PointTransformer(nn.Module):
                 elif k.startswith("base_model"):
                     base_ckpt[k[len("base_model.") :]] = base_ckpt[k]
                     del base_ckpt[k]
-
-            incompatible = self.load_state_dict(base_ckpt, strict=False)
+            try:
+                incompatible = self.load_state_dict(base_ckpt, strict=False)
+            except:
+                del base_ckpt['encoder.first_conv.0.weight']
+                del base_ckpt['encoder.first_conv.0.bias']
+                incompatible = self.load_state_dict(base_ckpt, strict=False)
 
             if incompatible.missing_keys:
                 print_log("missing_keys", logger="Transformer")

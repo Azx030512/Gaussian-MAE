@@ -332,16 +332,16 @@ class Gaussian_MAE_appearence(nn.Module):
             original_renderings=[]
             for i in range(len(rebuild_reps)):
                 viewpoint_cam = random.choice(viewpoint_stack)
-                rebuild_results = render(viewpoint_cam, rebuild_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
+                rebuild_results = render(viewpoint_cam, rebuild_reps[i], pipeline, background, d_xyz, 0.0, 0.0, return_depth=True, return_normal=True)
                 rebuild_renderings.append(rebuild_results["render"][None,...])
                 with torch.no_grad():
-                    original_results = render(viewpoint_cam, original_reps[i], pipeline, background, d_xyz, 0.0, 0.0, False)
+                    original_results = render(viewpoint_cam, original_reps[i], pipeline, background, d_xyz, 0.0, 0.0, return_depth=True, return_normal=True)
                     original_renderings.append(original_results["render"][None,...])
             rebuild_renderings=torch.concat(rebuild_renderings, dim=0)
             original_renderings=torch.concat(original_renderings, dim=0)
 
             loss4 = l1_loss(rebuild_renderings, original_renderings)
-            loss_dict["appearence"] = loss4 * 3
+            loss_dict["appearence"] = loss4 
             # t=original_renderings.detach().clone().cpu()
             # import os
             # import torchvision

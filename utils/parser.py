@@ -5,15 +5,15 @@ from pathlib import Path
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="cfgs/fintune/finetune_modelnet10_enc_full_group_xyz_1k.yaml", type=str, help="yaml config file")
+    parser.add_argument("--config", default="cfgs/pretrain/pretrain_gaussian_mae_appearence.yaml", type=str, help="yaml config file")
     parser.add_argument("--launcher", choices=["none", "pytorch"], default="none", help="job launcher")
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0, help="random seed")
-    parser.add_argument("--exp_name", type=str, default="gaussian-mae-fps", help="experiment name")
+    parser.add_argument("--exp_name", type=str, default="depth-debug", help="experiment name")
     parser.add_argument("--loss", type=str, default="cd1", help="loss name")
     parser.add_argument("--start_ckpts", type=str, default=None, help="reload used ckpt path")
-    parser.add_argument("--ckpts", type=str, default=None, help="test used ckpt path")
+    parser.add_argument("--ckpts", type=str, default="experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian-mae-fps/ckpt-epoch-300.pth", help="test used ckpt path") # 
     parser.add_argument("--val_freq", type=int, default=1, help="test freq")
     parser.add_argument("--data_path", type=str, default=None)  # dataset path
     parser.add_argument("--gs_path", type=str, default=None)  # gs dataset path
@@ -34,8 +34,8 @@ def get_args():
     parser.add_argument(
         "--resume",
         action="store_true",
-        default=True,
-        help="autoresume training (interrupted by accident)",
+        default=False,
+        help="auto resume training (interrupted by accident)",
     )
     parser.add_argument(
         "--test", action="store_true", default=False, help="test mode for certain ckpt"
@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument(
         "--finetune_model",
         action="store_true",
-        default=True,
+        default=False,
         help="finetune modelnet with pretrained weight",
     )
     parser.add_argument(
