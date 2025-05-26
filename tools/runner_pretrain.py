@@ -50,11 +50,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
     # build dataset
     (train_sampler, train_dataloader) = builder.dataset_builder(args, config.dataset.train)
     (_, test_dataloader) = builder.dataset_builder(args, config.dataset.val)
-    (_, extra_train_dataloader) = (
-        builder.dataset_builder(args, config.dataset.extra_train)
-        if config.dataset.get("extra_train")
-        else (None, None)
-    )
+    (_, extra_train_dataloader) = (builder.dataset_builder(args, config.dataset.extra_train) if config.dataset.get("extra_train")else (None, None))
     # build model
     # pass the norm attribute to the model
     config.model.norm_attribute = config.dataset.train.others.norm_attribute

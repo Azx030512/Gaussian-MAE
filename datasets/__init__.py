@@ -7,3 +7,6 @@ import datasets.ModelNetDataset
 import datasets.ModelNetDatasetFewShot
 import datasets.ScanObjectNNDataset
 import datasets.PartNormalDataset
+import datasets.LabeledHybrid
+import datasets.UnlabeledHybrid
+import datasets.MACGSDataset

@@ -1,0 +1,6 @@
+NAME: MACGSDataset
+DATA_PATH: data/MACGS-dataset
+GS_PATH: data/MACGS-dataset
+N_POINTS: 8192
+NUM_CATEGORY: 30
+ATTRIBUTE: ['xyz','opacity','scale','rotation','sh']

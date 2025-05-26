@@ -157,7 +157,7 @@ def run_net(args, config, train_writer=None, val_writer=None):
                 point_all = points.size(1)
 
             if config.npoints_fps:
-                fps_idx = pointnet2_utils.furthest_point_sample(points, point_all)  # (B, npoint)
+                fps_idx = pointnet2_utils.furthest_point_sample(points[:,:,:3].contiguous(), point_all)  # (B, npoint)
                 fps_idx = fps_idx[:, np.random.choice(point_all, npoints, False)]
 
                 points = pointnet2_utils.gather_operation(points.transpose(1, 2).contiguous(), fps_idx).transpose(1, 2).contiguous() # (B, N, 3)

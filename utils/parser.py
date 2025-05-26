@@ -5,15 +5,15 @@ from pathlib import Path
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="cfgs/pretrain/pretrain_gaussian_mae_appearence.yaml", type=str, help="yaml config file")
+    parser.add_argument("--config", default="cfgs/fintune/finetune_MACGS30.yaml", type=str, help="yaml config file")
     parser.add_argument("--launcher", choices=["none", "pytorch"], default="none", help="job launcher")
     parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--num_workers", type=int, default=3)
     parser.add_argument("--seed", type=int, default=0, help="random seed")
-    parser.add_argument("--exp_name", type=str, default="depth-debug", help="experiment name")
+    parser.add_argument("--exp_name", type=str, default="plain-macgs", help="experiment name")
     parser.add_argument("--loss", type=str, default="cd1", help="loss name")
     parser.add_argument("--start_ckpts", type=str, default=None, help="reload used ckpt path")
-    parser.add_argument("--ckpts", type=str, default="experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian-mae-fps/ckpt-epoch-300.pth", help="test used ckpt path") # 
+    parser.add_argument("--ckpts", type=str, default=None, help="test used ckpt path") # "experiments/pretrain_enc_full_group_xyz_1k/pretrain/gaussian-mae-fps/ckpt-epoch-300.pth"
     parser.add_argument("--val_freq", type=int, default=1, help="test freq")
     parser.add_argument("--data_path", type=str, default=None)  # dataset path
     parser.add_argument("--gs_path", type=str, default=None)  # gs dataset path
@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument(
         "--finetune_model",
         action="store_true",
-        default=False,
+        default=True,
         help="finetune modelnet with pretrained weight",
     )
     parser.add_argument(

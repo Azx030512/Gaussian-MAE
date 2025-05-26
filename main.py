@@ -1,7 +1,7 @@
 import os
-os.environ['OMP_NUM_THREADS']='2'
-os.environ['MKL_NUM_THREADS']='2'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['OMP_NUM_THREADS']='3'
+os.environ['MKL_NUM_THREADS']='3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 os.environ["CUDA_LAUNCH_BLOCKING"] = '1'
 os.environ["TORCH_CUDA_ARCH_LIST"] = '8.9'
 from tools import pretrain_run_net as pretrain
@@ -66,12 +66,8 @@ def main():
     logger.info(f"Distributed training: {args.distributed}")
     # set random seeds
     if args.seed is not None:
-        logger.info(
-            f"Set random seed to {args.seed}, " f"deterministic: {args.deterministic}"
-        )
-        misc.set_random_seed(
-            args.seed + args.local_rank, deterministic=args.deterministic
-        )  # seed + rank, for augmentation
+        logger.info(f"Set random seed to {args.seed}, " f"deterministic: {args.deterministic}")
+        misc.set_random_seed(args.seed + args.local_rank, deterministic=args.deterministic)  # seed + rank, for augmentation
     if args.distributed:
         assert args.local_rank == torch.distributed.get_rank()
 
